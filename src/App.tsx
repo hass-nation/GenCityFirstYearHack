@@ -10,8 +10,13 @@ import { applyPetAction, toggleTaskProgress, type PlannerProgress } from "./feat
 import TaskBoard from "./features/tasks/TaskBoard";
 import TaskReminder from "./features/tasks/TaskReminder";
 import CalendarPanel from "./features/tasks/CalendarPanel";
+import RemindersPage from "./features/tasks/RemindersPage";
+import StreaksPage from "./features/tasks/StreaksPage";
+import SettingsPage from "./features/accounts/SettingsPage";
+import { getDashboardSummary } from "./features/tasks/dashboard";
+import { isQuietHours } from "./features/tasks/reminders";
 import { dashboardStats, formatScreenTime } from "./features/tasks/dashboardStats";
-import type { Page, Pet, PetAction, Task } from "./types";
+import type { Page, Pet, PetAction, Task, PlannerSettings } from "./types";
 
 const starterTasks: Task[] = [
   { id: "task-1", title: "Plan your first study session", done: false },
@@ -44,23 +49,26 @@ function loadProgress(): PlannerProgress {
   const tasks = saved?.tasks ?? load("gencity-tasks", starterTasks);
   const pet = saved?.pet ?? load("gencity-pet", starterPet);
   // The chick was the original demo default, before companions were selectable.
-  return { tasks, pet: pet.avatar === "🐣" ? { ...pet, avatar: "🐶" } : pet, activity: saved?.activity };
+  return { tasks, pet: pet.avatar === "🐣" ? { ...pet, avatar: "🐶" } : pet, activity: saved?.activity, xpHistory: saved?.xpHistory ?? load("gencity-xp-history", []), streakBonusMilestones: saved?.streakBonusMilestones ?? [] };
 }
 
 const navItems: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "⌂" },
   { id: "tasks", label: "Tasks", icon: "▤" },
+  { id: "reminders", label: "Reminders", icon: "!" },
+  { id: "streaks", label: "Streaks & XP", icon: "*" },
   { id: "calendar", label: "Calendar", icon: "▦" },
   { id: "activity", label: "Activity", icon: "◷" },
   { id: "pet", label: "Pet room", icon: "♡" },
   { id: "friends", label: "Friends", icon: "♧" },
-  { id: "account", label: "Profile", icon: "◉" },
+  { id: "account", label: "Settings", icon: "◉" },
 ];
 
 export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [progress, setProgress] = useState(loadProgress);
-  const { tasks, pet, reward, activity } = progress;
+  const [settings, setSettings] = useState<PlannerSettings>(() => load("pcpet-settings", { remindersEnabled: true, browserNotifications: false, quietHoursEnabled: false, quietHoursStart: "22:00", quietHoursEnd: "08:00" }));
+  const { tasks, pet, reward, activity, xpHistory = [] } = progress;
   const onCapture = useCallback((capture: ActivityCapture) => {
     const now = new Date();
     setProgress((current) => recordAppCapture(current, capture, now));
@@ -68,8 +76,18 @@ export default function App() {
   const tracking = useActivityCapture(onCapture);
 
   useEffect(() => {
-    localStorage.setItem("gencity-progress", JSON.stringify({ tasks, pet, activity }));
-  }, [tasks, pet, activity]);
+    localStorage.setItem("gencity-progress", JSON.stringify({ tasks, pet, activity, xpHistory, streakBonusMilestones: progress.streakBonusMilestones ?? [] }));
+  }, [tasks, pet, activity, xpHistory, progress.streakBonusMilestones]);
+  useEffect(() => { localStorage.setItem("pcpet-settings", JSON.stringify(settings)); }, [settings]);
+
+  useEffect(() => {
+    if (!settings.remindersEnabled || !settings.browserNotifications || !("Notification" in window) || Notification.permission !== "granted") return;
+    const now = new Date();
+    if (isQuietHours(now, settings.quietHoursEnabled, settings.quietHoursStart, settings.quietHoursEnd)) return;
+    const due = tasks.filter((task) => !task.done && !task.notificationSentAt && task.dueAt && Date.parse(task.dueAt) <= now.getTime() && (!task.snoozedUntil || Date.parse(task.snoozedUntil) <= now.getTime()));
+    for (const task of due) new Notification(`${pet.name}: ${task.title}`, { body: task.description || "A task is due." });
+    if (due.length) setProgress((current) => ({ ...current, tasks: current.tasks.map((task) => due.some((item) => item.id === task.id) ? { ...task, notificationSentAt: now.toISOString() } : task) }));
+  }, [tasks, pet.name, settings]);
 
   useEffect(() => {
     document.title = pet.hunger > 70 ? `${pet.name} needs a snack!` : "GenCity Pet Planner";
@@ -91,6 +109,8 @@ export default function App() {
     }));
   }
 
+  function snoozeTaskReminder(id: string, until: string) { setProgress((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === id ? { ...task, snoozedUntil: until } : task) })); }
+
   function act(action: PetAction) {
     setProgress((current) => applyPetAction(current, action));
   }
@@ -111,6 +131,7 @@ export default function App() {
   const completedCount = tasks.filter((task) => task.done).length;
   const now = new Date();
   const stats = dashboardStats(tasks, activity, now);
+  const plannerSummary = getDashboardSummary(tasks, now);
   const screenTime = { day: activityDay(now), seconds: stats.activeSecondsToday };
   useScreenTimeSharing(screenTime);
 
@@ -154,7 +175,7 @@ export default function App() {
             </div>
             <div className="stat-card"><span className="stat-icon">✓</span><span className="stat-label">TASKS DONE</span><strong>{completedCount}<small> / {tasks.length}</small></strong><button className="text-button" onClick={() => setPage("tasks")}>Open task list →</button></div>
             <div className="pet-preview"><div><p className="eyebrow">YOUR COMPANION</p><h2>{pet.name}</h2><p>Level {pet.level} · {pet.xp} XP</p><button className="text-button" onClick={() => setPage("pet")}>Visit pet room →</button></div><div className="pet-emoji" aria-label={`${pet.name}, your pet`}>{pet.avatar ?? "🐶"}</div></div>
-            <div className="next-card"><p className="eyebrow">A QUICK REMINDER</p><h3>{tasks.find((task) => !task.done)?.title ?? "You're all caught up!"}</h3><button className="text-button" onClick={() => setPage("tasks")}>View today's plan →</button></div>
+            <div className="next-card"><p className="eyebrow">STUDY STREAK · {plannerSummary.streak} DAYS</p><h3>{plannerSummary.nextTask ?? (plannerSummary.remaining ? "Add a deadline to see your next task." : "You're all caught up!")}</h3><button className="text-button" onClick={() => setPage("tasks")}>View today's plan →</button></div>
             <dl className="dashboard-activity content-card">
               <div><dt>Screen time today</dt><dd>{formatScreenTime(stats.activeSecondsToday)}</dd></div>
               <div><dt>Total screen time</dt><dd>{formatScreenTime(stats.activeSecondsTotal)}</dd></div>
@@ -165,15 +186,17 @@ export default function App() {
         )}
 
         {page === "tasks" && <TaskBoard tasks={tasks} onToggle={completeTask} onAdd={addTask} />}
+        {page === "reminders" && <RemindersPage tasks={tasks} remindersEnabled={settings.remindersEnabled} onToggle={completeTask} onSnooze={snoozeTaskReminder} onDismiss={dismissTaskReminder} />}
+        {page === "streaks" && <StreaksPage tasks={tasks} pet={pet} xpHistory={xpHistory} />}
+        {page === "account" && <SettingsPage tasks={tasks} pet={pet} settings={settings} onSettingsChange={setSettings} onRenamePet={renamePet} onCustomisePet={customisePet} onDownloadData={(accountData) => { const blob = new Blob([JSON.stringify({ tasks, pet, activity, xpHistory, settings, accountData }, null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "pc-pet-data.json"; link.click(); URL.revokeObjectURL(link.href); }} onDeleteData={() => { localStorage.clear(); location.reload(); }} />}
         {page === "calendar" && <CalendarPanel tasks={tasks} onViewTasks={() => setPage("tasks")} />}
         {page === "activity" && <ActivityPanel activity={activity} tracking={tracking} onPreference={changeAppPreference} />}
         {page === "pet" && <PetRoom pet={pet} onAction={act} onRename={renamePet} onCustomise={customisePet} onNavigate={setPage} />}
         {page === "friends" && <FriendsPanel screenTime={screenTime} />}
-        {page === "account" && <AccountPanel />}
 
         <footer className="footer">Made for first years <span>✦</span></footer>
       </main>
-      <TaskReminder tasks={tasks} pet={pet} onDismiss={dismissTaskReminder} onViewTasks={() => setPage("tasks")} />
+      <TaskReminder tasks={tasks} pet={pet} settings={settings} onDismiss={dismissTaskReminder} onSnooze={snoozeTaskReminder} onViewTasks={() => setPage("tasks")} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-export type Page = "home" | "tasks" | "calendar" | "activity" | "pet" | "friends" | "account";
+export type Page = "home" | "tasks" | "calendar" | "activity" | "reminders" | "streaks" | "pet" | "friends" | "account";
 
 export type Task = {
   id: string;
@@ -6,9 +6,15 @@ export type Task = {
   done: boolean;
   description?: string;
   dueAt?: string;
+  completedAt?: string;
   reminderDismissed?: boolean;
+  snoozedUntil?: string;
+  notificationSentAt?: string;
   xpAwarded?: boolean;
 };
+
+export type XpEvent = { id: string; title: string; amount: number; source: "task" | "play" | "streak"; createdAt: string };
+export type PlannerSettings = { remindersEnabled: boolean; browserNotifications: boolean; quietHoursEnabled: boolean; quietHoursStart: string; quietHoursEnd: string };
 
 export type PetAction = "feed" | "play" | "rest";
 
