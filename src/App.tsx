@@ -17,7 +17,7 @@ const starterPet: Pet = {
   energy: 80,
   xp: 0,
   level: 1,
-  avatar: "🐣",
+  avatar: "🐶",
   roomTheme: "lavender",
 };
 
@@ -35,6 +35,12 @@ function load<T,>(key: string, fallback: T): T {
   }
 }
 
+function loadPet(): Pet {
+  const saved = load("gencity-pet", starterPet);
+  // The chick was the original demo default, before companions were selectable.
+  return saved.avatar === "🐣" ? { ...saved, avatar: "🐶" } : saved;
+}
+
 const navItems: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "⌂" },
   { id: "tasks", label: "Tasks", icon: "▤" },
@@ -45,7 +51,7 @@ const navItems: { id: Page; label: string; icon: string }[] = [
 export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [tasks, setTasks] = useState<Task[]>(() => load("gencity-tasks", starterTasks));
-  const [pet, setPet] = useState<Pet>(() => load("gencity-pet", starterPet));
+  const [pet, setPet] = useState<Pet>(loadPet);
 
   useEffect(() => {
     localStorage.setItem("gencity-tasks", JSON.stringify(tasks));
@@ -53,7 +59,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem("gencity-pet", JSON.stringify(pet));
-    document.title = pet.hunger > 70 ? "Pixel needs a snack!" : "GenCity Pet Planner";
+    document.title = pet.hunger > 70 ? `${pet.name} needs a snack!` : "GenCity Pet Planner";
   }, [pet]);
 
   function completeTask(taskId: string) {
@@ -117,7 +123,7 @@ export default function App() {
               <div className="welcome-sparkle" aria-hidden="true">✦</div>
             </div>
             <div className="stat-card"><span className="stat-icon">✓</span><span className="stat-label">TASKS DONE</span><strong>{completedCount}<small> / {tasks.length}</small></strong><button className="text-button" onClick={() => setPage("tasks")}>Open task list →</button></div>
-            <div className="pet-preview"><div><p className="eyebrow">YOUR COMPANION</p><h2>{pet.name}</h2><p>Level {pet.level} · {pet.xp} XP</p><button className="text-button" onClick={() => setPage("pet")}>Visit pet room →</button></div><div className="pet-emoji" aria-label="Pixel pet">🐣</div></div>
+            <div className="pet-preview"><div><p className="eyebrow">YOUR COMPANION</p><h2>{pet.name}</h2><p>Level {pet.level} · {pet.xp} XP</p><button className="text-button" onClick={() => setPage("pet")}>Visit pet room →</button></div><div className="pet-emoji" aria-label={`${pet.name}, your pet`}>{pet.avatar ?? "🐶"}</div></div>
             <div className="next-card"><p className="eyebrow">A QUICK REMINDER</p><h3>{tasks.find((task) => !task.done)?.title ?? "You're all caught up!"}</h3><button className="text-button" onClick={() => setPage("tasks")}>View today's plan →</button></div>
           </section>
         )}

@@ -5,6 +5,8 @@ dist/
 .env
 .env.*
 !.env.example
+instance/
+desktop/PetOverlay/.build/
 .DS_Store
 Thumbs.db
 .idea/
