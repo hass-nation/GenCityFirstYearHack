@@ -16,8 +16,8 @@ function updateDesktop(method: "PUT" | "POST", payload: object, signal?: AbortSi
   }).catch(() => {});
 }
 
-export function speakOnDesktop(text: string) {
-  updateDesktop("POST", { text: Array.from(text).slice(0, 280).join("") });
+export function speakOnDesktop(text: string, celebrate = false) {
+  updateDesktop("POST", { text: Array.from(text).slice(0, 280).join(""), celebrate });
 }
 
 export function useDesktopAppearance({ name, species, customFrames }: Pet) {

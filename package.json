@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "demo:planner": "node src/features/tasks/main.ts",
+    "demo": "tsc --noEmit && vite build && python -m scripts.demo",
     "build": "tsc --noEmit && vite build",
     "build:pages": "tsc --noEmit && vite build && node scripts/sync-pages.mjs",
     "preview": "vite preview"

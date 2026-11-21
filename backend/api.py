@@ -284,16 +284,24 @@ def send_message():
     body = str(payload.get("body", "")).strip()
     if not body or len(body) > 500:
         return jsonify({"error": "Messages must contain 1–500 characters."}), 400
-    friend = database().execute(
-        """SELECT u.* FROM users u JOIN friends f ON f.friend_id = u.id
-           WHERE f.user_id = ? AND u.friend_code = ?""",
-        (g.user["id"], friend_code),
-    ).fetchone()
+    friend = message_recipient(g.user["id"], friend_code)
     if friend is None:
         return jsonify({"error": "Add this friend using their code before sending a message."}), 404
+    return jsonify({"id": insert_message(g.user["id"], friend["id"], body), "sent": True}), 201
+
+
+def message_recipient(sender_id, friend_code):
+    return database().execute(
+        """SELECT u.* FROM users u JOIN friends f ON f.friend_id = u.id
+           WHERE f.user_id = ? AND u.friend_code = ?""",
+        (sender_id, friend_code),
+    ).fetchone()
+
+
+def insert_message(sender_id, recipient_id, body):
     cursor = database().execute(
         "INSERT INTO messages (sender_id, recipient_id, body) VALUES (?, ?, ?)",
-        (g.user["id"], friend["id"], body),
+        (sender_id, recipient_id, body),
     )
     database().commit()
-    return jsonify({"id": cursor.lastrowid, "sent": True}), 201
+    return cursor.lastrowid

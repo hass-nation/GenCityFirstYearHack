@@ -23,16 +23,10 @@ export default function ActivityPanel({ activity, tracking, onPreference }: Prop
     <section className="content-card activity-panel" aria-labelledby="activity-title">
       <header className="activity-header">
         <div><h2 id="activity-title">Your apps and websites</h2><p>For websites, enable tracking for this planner in the PC Pet extension for Chrome or Edge.</p></div>
-        {tracking.status === "idle"
-          ? <button className="primary-button" onClick={() => void tracking.start()}>Start tracking</button>
-          : <button className="primary-button" disabled={tracking.status === "stopping"} onClick={tracking.stop}>Stop tracking</button>}
       </header>
       <p className="activity-status" role="status">
-        {tracking.status === "tracking" ? "Tracking foreground apps. Updates about every 2 seconds."
-          : tracking.status === "stopping" ? "Finishing the current sample…"
-          : "Tracking is off. Activity is saved in this browser."}
+        {tracking.status === "tracking" ? "Tracking" : tracking.status === "loading" ? "Loading…" : tracking.status === "offline" ? "No connection" : "Off"}
       </p>
-      {tracking.error && <p className="task-form-error" role="alert">{tracking.error}</p>}
       {tabSnapshot?.unavailable && <p className="activity-tab-message">Open tab titles are temporarily unavailable.</p>}
 
       {visible.length ? (

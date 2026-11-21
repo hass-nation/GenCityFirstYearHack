@@ -92,7 +92,7 @@ form.addEventListener("submit", async (event) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, context: plannerContext() }),
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(30_000),
     });
     if (!response.ok) throw new Error();
     const { reply } = await response.json();

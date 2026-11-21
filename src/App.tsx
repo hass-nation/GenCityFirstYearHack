@@ -1,20 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AccountPanel from "./features/accounts/AccountPanel";
 import ActivityPanel from "./features/activity/ActivityPanel";
 import { activityDay, dailyScreenTime, recordAppCapture, setAppPreference, type ActivityCapture } from "./features/activity/activity";
 import { useActivityCapture } from "./features/activity/useActivityCapture";
 import FriendsPanel from "./features/friends/FriendsPanel";
-import { useScreenTimeSharing } from "./features/friends/screenTimeSharing";
+import MessagesPanel from "./features/friends/MessagesPanel";
 import PetRoom from "./features/pet/PetRoom";
 import PetSprite from "./features/pet/PetSprite";
 import { DEFAULT_PET_NAME, migratePet, type AppearanceChange } from "./features/pet/appearance";
-import { useDesktopAppearance } from "./features/pet/desktopSync";
-import { applyPetAction, toggleTaskProgress, XP_PER_LEVEL, type PlannerProgress } from "./features/pet/progression";
+import { speakOnDesktop, useDesktopAppearance } from "./features/pet/desktopSync";
+import { usePetBubbles } from "./features/pet/usePetBubbles";
+import { toggleTaskProgress, XP_PER_LEVEL, type PlannerProgress } from "./features/pet/progression";
 import TaskBoard from "./features/tasks/TaskBoard";
 import TaskReminder from "./features/tasks/TaskReminder";
 import CalendarPanel from "./features/tasks/CalendarPanel";
 import { dashboardStats, formatScreenTime } from "./features/tasks/dashboardStats";
-import type { Page, Pet, PetAction, Task } from "./types";
+import type { Page, Pet, Task } from "./types";
 
 const starterTasks: Task[] = [
   { id: "task-1", title: "Plan your first study session", done: false },
@@ -55,7 +56,8 @@ const navItems: { id: Page; label: string }[] = [
   { id: "calendar", label: "Calendar" },
   { id: "activity", label: "Activity" },
   { id: "pet", label: "Pet room" },
-  { id: "friends", label: "Friends" },
+  { id: "friends", label: "Create party" },
+  { id: "messages", label: "Messages" },
   { id: "account", label: "Profile" },
 ];
 
@@ -63,12 +65,27 @@ export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [progress, setProgress] = useState(loadProgress);
   const { tasks, pet, reward, activity } = progress;
+  const previousLevel = useRef(pet.level);
+  const [celebration, setCelebration] = useState<number>();
+  useEffect(() => {
+    const increased = pet.level > previousLevel.current;
+    previousLevel.current = pet.level;
+    if (!increased) return;
+    setCelebration(pet.level);
+    speakOnDesktop(`I leveled up! I’m level ${pet.level}!`, true);
+  }, [pet.level]);
+  useEffect(() => {
+    if (celebration === undefined) return;
+    const timer = window.setTimeout(() => setCelebration(undefined), 4800);
+    return () => window.clearTimeout(timer);
+  }, [celebration]);
   const onCapture = useCallback((capture: ActivityCapture) => {
     const now = new Date();
     setProgress((current) => recordAppCapture(current, capture, now));
   }, []);
   const tracking = useActivityCapture(onCapture);
   useDesktopAppearance(pet);
+  const { inbox, bubble } = usePetBubbles(activity);
 
   useEffect(() => {
     localStorage.setItem("gencity-progress", JSON.stringify({ tasks, pet, activity }));
@@ -94,10 +111,6 @@ export default function App() {
     }));
   }
 
-  function act(action: PetAction) {
-    setProgress((current) => applyPetAction(current, action));
-  }
-
   function renamePet(name: string) {
     setProgress((current) => ({ ...current, pet: { ...current.pet, name } }));
   }
@@ -114,8 +127,6 @@ export default function App() {
   const completedCount = tasks.filter((task) => task.done).length;
   const now = new Date();
   const stats = dashboardStats(tasks, activity, now);
-  const screenTime = { day: activityDay(now), seconds: stats.activeSecondsToday };
-  useScreenTimeSharing(screenTime);
   const week = page === "home" ? dailyScreenTime(activity, now) : [];
   const chartMaximum = Math.max(1, ...week.map(({ seconds }) => seconds));
   const nextTasks = tasks.filter((task) => !task.done).slice(0, 3);
@@ -226,12 +237,20 @@ export default function App() {
         {page === "tasks" && <TaskBoard tasks={tasks} onToggle={completeTask} onAdd={addTask} />}
         {page === "calendar" && <CalendarPanel tasks={tasks} onViewTasks={() => setPage("tasks")} />}
         {page === "activity" && <ActivityPanel activity={activity} tracking={tracking} onPreference={changeAppPreference} />}
-        {page === "pet" && <PetRoom pet={pet} onAction={act} onRename={renamePet} onCustomise={customisePet} onNavigate={setPage} />}
-        {page === "friends" && <FriendsPanel screenTime={screenTime} />}
+        {page === "pet" && <PetRoom pet={pet} onRename={renamePet} onCustomise={customisePet} />}
+        {page === "friends" && <FriendsPanel />}
+        {page === "messages" && <MessagesPanel inbox={inbox} />}
         {page === "account" && <AccountPanel />}
 
       </main>
       <TaskReminder tasks={tasks} pet={pet} onDismiss={dismissTaskReminder} onViewTasks={() => setPage("tasks")} />
+      {celebration !== undefined && <div className="pet-celebration" key={celebration}>
+        <div className="pet-speech" role="status">I leveled up! I’m level {celebration}!</div>
+        <PetSprite className="level-up-sprite" species={pet.species} customFrames={pet.customFrames} />
+      </div>}
+      <div role="status" className={bubble ? "pet-speech pet-popup" : undefined}>
+        {bubble && <><strong>{pet.name}</strong><div>{bubble}</div></>}
+      </div>
     </div>
   );
 }

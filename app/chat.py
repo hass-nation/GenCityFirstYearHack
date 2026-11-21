@@ -1,6 +1,7 @@
 """Server-side Cortex chat for the Flask pet room."""
 
 import json
+import logging
 import os
 import re
 from urllib.parse import quote, urlsplit
@@ -12,6 +13,7 @@ from backend.api import current_user
 
 pet_chat = Blueprint("pet_chat", __name__)
 HISTORY_MESSAGES = 6
+logger = logging.getLogger(__name__)
 
 
 def _agent_config():
@@ -44,10 +46,6 @@ def _scripted_reply(user_text, name):
         return "That sounds like a lot. Let's take one small thing at a time. I'm right here with you. 💜"
     if re.search(r"\b(task|study|work|homework|focus)\b", user_text, re.I):
         return "You've got this! A tiny first step counts. Finish a task and we'll earn 20 XP together."
-    if re.search(r"\b(play|game|fun)\b", user_text, re.I):
-        return "Play time! Use the Play button and I'll get a happiness boost (and 5 XP!)."
-    if re.search(r"\b(food|eat|hungry|snack)\b", user_text, re.I):
-        return "A snack sounds lovely. Tap Feed and I'll feel much better! 🍓"
     if re.search(r"\b(thanks|thank you)\b", user_text, re.I):
         return f"Always, {name}! You're doing great. ✨"
     return "I like chatting with you! Tell me about your day, or we can take a break together. ✨"
@@ -96,14 +94,23 @@ def ask_pet(user_text, pet, next_task, streak, history):
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-            }, json={"stream": False, "messages": messages}, timeout=8, allow_redirects=False)
+            }, json={"stream": False, "messages": messages}, timeout=(4, 22), allow_redirects=False)
             response.raise_for_status()
             reply = _assistant_text(response.json())
             if reply:
                 return {"reply": reply, "source": "agent"}
+            reason = "empty_reply"
+        else:
+            reason = "not_configured"
+    except requests.Timeout:
+        reason = "timeout"
+    except requests.HTTPError as error:
+        status = error.response.status_code if error.response is not None else None
+        reason = {401: "authentication", 403: "permission", 404: "agent_not_found"}.get(status, "upstream_error")
     except (requests.RequestException, ValueError):
-        pass
-    return {"reply": _scripted_reply(user_text, name), "source": "scripted"}
+        reason = "upstream_error"
+    logger.warning("Cortex chat used a local reply (%s)", reason)
+    return {"reply": _scripted_reply(user_text, name), "source": "scripted", "fallback_reason": reason}
 
 
 @pet_chat.get("/pet")

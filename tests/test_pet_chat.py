@@ -35,7 +35,7 @@ class PetChatTest(unittest.TestCase):
         self.assertTrue(url.endswith("/databases/PC%20PET/schemas/PUBLIC/agents/PC_PET_AGENT:run"))
         kwargs = post.call_args.kwargs
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-token")
-        self.assertEqual(kwargs["timeout"], 8)
+        self.assertEqual(kwargs["timeout"], (4, 22))
         self.assertIs(kwargs["json"]["stream"], False)
         prompt = kwargs["json"]["messages"][0]["content"][0]["text"]
         self.assertIn("Maths", prompt)
@@ -50,6 +50,7 @@ class PetChatTest(unittest.TestCase):
         result = self.client.post("/pet/chat", json={"message": "study"})
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json["source"], "scripted")
+        self.assertEqual(result.json["fallback_reason"], "timeout")
         self.assertIn("20 XP", result.json["reply"])
 
     @patch("app.chat.requests.post")
@@ -66,7 +67,9 @@ class PetChatTest(unittest.TestCase):
         self.assertEqual(self.client.post("/pet/chat", json={"message": "hi"}).json["source"], "scripted")
         post.reset_mock()
         with patch.dict(os.environ, {"SNOWFLAKE_TOKEN": ""}):
-            self.assertEqual(self.client.post("/pet/chat", json={"message": "hi"}).json["source"], "scripted")
+            result = self.client.post("/pet/chat", json={"message": "hi"}).json
+            self.assertEqual(result["source"], "scripted")
+            self.assertEqual(result["fallback_reason"], "not_configured")
         post.assert_not_called()
 
     def test_pet_page_serves_vanilla_chat(self):

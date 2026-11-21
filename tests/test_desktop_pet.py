@@ -21,8 +21,10 @@ class DesktopPetTest(unittest.TestCase):
         self.assertEqual(self.client.put(self.url, json=appearance, headers=self.origin).status_code, 204)
         self.assertEqual(self.client.get(self.url).json["appearance"], appearance)
         with patch("backend.desktop_pet.time", return_value=100):
-            self.assertEqual(self.client.post(self.url, json={"text": "Hello!"}, headers=self.origin).status_code, 204)
-            self.assertEqual(self.client.get(self.url).json["speech"]["text"], "Hello!")
+            self.assertEqual(self.client.post(self.url, json={"text": "I leveled up!", "celebrate": True}, headers=self.origin).status_code, 204)
+            speech = self.client.get(self.url).json["speech"]
+            self.assertEqual(speech["text"], "I leveled up!")
+            self.assertIs(speech["celebrate"], True)
         with patch("backend.desktop_pet.time", return_value=115):
             self.assertIsNone(self.client.get(self.url).json["speech"])
 
@@ -35,3 +37,22 @@ class DesktopPetTest(unittest.TestCase):
         appearance = {"name": "Wobbles", "species": "custom", "frames": ["not a PNG"]}
         self.assertEqual(self.client.put(self.url, json=appearance, headers=self.origin).status_code, 400)
         self.assertEqual(self.client.get(self.url).json["appearance"]["species"], "camel")
+
+    def test_friend_message_arrives_only_after_desktop_acknowledges_exit(self):
+        def profile(name):
+            created = self.client.post("/api/users", json={"display_name": name}).json
+            return created["profile"]["friend_code"], {"Authorization": f"Bearer {created['token']}", **self.origin}
+
+        _, sender = profile("Sender")
+        code, recipient = profile("Recipient")
+        self.client.post("/api/friends", json={"friend_code": code}, headers=sender)
+        pending = self.client.post(f"{self.url}/delivery", json={"friend_code": code, "body": "Hello"}, headers=sender)
+        self.assertEqual(pending.status_code, 202)
+        delivery = f"{self.url}/delivery/{pending.json['id']}"
+        self.assertEqual(self.client.get(delivery, headers=sender).json["status"], "walking")
+        self.assertEqual(self.client.get("/api/messages", headers=recipient).json["messages"], [])
+        self.assertEqual(self.client.post(f"{delivery}/complete", headers={"Origin": "https://example.org"}).status_code, 403)
+        for _ in range(2):
+            self.assertEqual(self.client.post(f"{delivery}/complete", headers=self.origin).status_code, 204)
+        self.assertEqual(self.client.get(delivery, headers=sender).json["status"], "sent")
+        self.assertEqual([message["body"] for message in self.client.get("/api/messages", headers=recipient).json["messages"]], ["Hello"])
