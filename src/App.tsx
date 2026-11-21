@@ -17,7 +17,14 @@ const starterPet: Pet = {
   energy: 80,
   xp: 0,
   level: 1,
+  avatar: "🐣",
+  roomTheme: "lavender",
 };
+
+function withXp(pet: Pet, addedXp: number): Pet {
+  const xp = pet.xp + addedXp;
+  return { ...pet, xp, level: Math.floor(xp / 100) + 1 };
+}
 
 function load<T,>(key: string, fallback: T): T {
   try {
@@ -56,8 +63,7 @@ export default function App() {
     const task = tasks.find((item) => item.id === taskId);
     if (task && !task.done) {
       setPet((current) => {
-        const xp = current.xp + 20;
-        return { ...current, xp, level: Math.floor(xp / 100) + 1, happiness: Math.min(100, current.happiness + 5) };
+        return { ...withXp(current, 20), happiness: Math.min(100, current.happiness + 5) };
       });
     }
   }
@@ -69,13 +75,17 @@ export default function App() {
   function act(action: PetAction) {
     setPet((current) => {
       if (action === "feed") return { ...current, hunger: Math.max(0, current.hunger - 25), happiness: Math.min(100, current.happiness + 5) };
-      if (action === "play") return { ...current, happiness: Math.min(100, current.happiness + 15), energy: Math.max(0, current.energy - 15), xp: current.xp + 5 };
+      if (action === "play") return { ...withXp(current, 5), happiness: Math.min(100, current.happiness + 15), energy: Math.max(0, current.energy - 15) };
       return { ...current, energy: Math.min(100, current.energy + 25) };
     });
   }
 
   function renamePet(name: string) {
     setPet((current) => ({ ...current, name }));
+  }
+
+  function customisePet(change: Partial<Pick<Pet, "avatar" | "roomTheme">>) {
+    setPet((current) => ({ ...current, ...change }));
   }
 
   const completedCount = tasks.filter((task) => task.done).length;
@@ -113,7 +123,7 @@ export default function App() {
         )}
 
         {page === "tasks" && <TaskBoard tasks={tasks} onToggle={completeTask} onAdd={addTask} />}
-        {page === "pet" && <PetRoom pet={pet} onAction={act} onRename={renamePet} />}
+        {page === "pet" && <PetRoom pet={pet} onAction={act} onRename={renamePet} onCustomise={customisePet} />}
         {page === "account" && <AccountPanel />}
 
         <footer className="footer">Made for first years <span>✦</span></footer>

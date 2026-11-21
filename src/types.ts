@@ -15,4 +15,7 @@ export type Pet = {
   energy: number;
   xp: number;
   level: number;
+  /** Optional so pets saved by older builds keep loading. */
+  avatar?: string;
+  roomTheme?: "lavender" | "meadow" | "sunset";
 };
