@@ -67,6 +67,11 @@ def token_digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def request_payload() -> dict[str, Any]:
+    payload = request.get_json(silent=True)
+    return payload if isinstance(payload, dict) else {}
+
+
 def current_user() -> sqlite3.Row | None:
     scheme, _, token = request.headers.get("Authorization", "").partition(" ")
     if scheme.lower() != "bearer" or not token:
@@ -114,7 +119,7 @@ def health():
 
 @api.post("/users")
 def create_user():
-    payload = request.get_json(silent=True) or {}
+    payload = request_payload()
     display_name = str(payload.get("display_name", "")).strip()
     if not display_name or len(display_name) > 24:
         return jsonify({"error": "Choose a display name of 1–24 characters."}), 400
@@ -141,7 +146,7 @@ def get_me():
 @api.patch("/me/pet")
 @require_user
 def update_pet():
-    payload = request.get_json(silent=True) or {}
+    payload = request_payload()
     updates: dict[str, str] = {}
     for field, max_length in (("pet_name", 16), ("pet_avatar", 24)):
         if field in payload:
@@ -181,7 +186,7 @@ def list_friends():
 @api.post("/friends")
 @require_user
 def add_friend():
-    payload = request.get_json(silent=True) or {}
+    payload = request_payload()
     friend_code = re.sub(r"\s+", "", str(payload.get("friend_code", ""))).upper()
     if not re.fullmatch(r"[A-HJ-NP-Z2-9]{8}", friend_code):
         return jsonify({"error": "Enter an 8-character friend code."}), 400
@@ -219,7 +224,7 @@ def get_messages():
 @api.post("/messages")
 @require_user
 def send_message():
-    payload = request.get_json(silent=True) or {}
+    payload = request_payload()
     friend_code = re.sub(r"\s+", "", str(payload.get("friend_code", ""))).upper()
     body = str(payload.get("body", "")).strip()
     if not body or len(body) > 500:

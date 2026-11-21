@@ -137,3 +137,35 @@ code{color:#ddceff}
 .chat-note{margin:9px 0 0;color:#827b94;font-size:11px;line-height:1.5}
 @media(max-width:520px){.customise-group{display:block}.customise-label{display:block;width:auto;padding:0 0 8px}.theme-choice{padding:8px}.chat-message{max-width:96%}.xp-heading{font-size:11px}}
 @media(max-width:720px){.app-shell{grid-template-columns:1fr}.sidebar{padding:12px;border-right:0;border-bottom:1px solid #ffffff14}.brand{margin:0 0 12px}.sidebar nav{display:flex;overflow:auto}.nav-item{white-space:nowrap;padding:9px}.sidebar-note{display:none}.main-content{padding-top:24px}.dashboard-grid{grid-template-columns:1fr}.welcome-card{min-height:210px}.pet-controls{grid-template-columns:1fr;gap:12px}.topbar{margin-bottom:22px}}
+
+.customise-page{max-width:850px}
+.customise-page .section-heading{align-items:flex-start}
+.customise-page .section-heading h2{margin:4px 0 7px}
+.customise-preview{min-height:230px;display:grid;justify-items:center;align-content:center;gap:8px}
+.customise-preview h3{font-size:20px}
+.customise-preview .rename-label{margin-top:8px}
+.customise-preview .rename-label input{background:#171428;color:#f6f1ff;border:1px solid #ffffff24;border-radius:8px}
+.customise-page .customise-panel{padding-top:20px}
+.friends-page{max-width:900px;display:grid;gap:18px}
+.friends-intro h2,.friends-page h3{margin:4px 0 8px}
+.friends-intro>.muted{max-width:620px}
+.friends-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.friends-grid .content-card{max-width:none}
+.friend-form{display:grid;gap:8px;margin-top:18px}
+.friend-form label{font-size:12px;color:#b8b1c9}
+.friend-form-row,.friend-code-row{display:flex;gap:9px;align-items:center}
+.friend-form-row input{min-width:0;flex:1}
+.friend-form-row button,.friend-code-row button{white-space:nowrap}
+.friend-code{font:700 22px "DM Mono",monospace;letter-spacing:.12em;color:#e1d4ff;background:#171428;border:1px dashed #9a83d0;border-radius:10px;padding:12px 16px}
+.friend-profile-name{margin:16px 0 0;color:#aaa2ba;font-size:12px}
+.friend-profile-name strong{color:#f4efff}
+.friend-list-card{max-width:none}
+.friend-list{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.friend-list li{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:#171428}
+.friend-list li>span:last-child{display:grid;gap:3px}
+.friend-list small{color:#aaa2ba}
+.friend-avatar{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:#393052;font-size:22px}
+.friend-message{margin:0;padding:11px 14px;border-radius:10px;background:#29243f;color:#ded2ff;font-size:13px}
+.friend-message.error{background:#472c3a;color:#ffd5de}
+.friends-footnote{margin:0;color:#8e879f;font-size:11px}
+@media(max-width:650px){.friends-grid{grid-template-columns:1fr}.friend-form-row,.friend-code-row{align-items:stretch;flex-direction:column}.friend-form-row button,.friend-code-row button{width:100%}.friend-code{width:100%;text-align:center;box-sizing:border-box}.customise-preview{min-height:200px}}

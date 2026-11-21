@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import AccountPanel from "./features/accounts/AccountPanel";
+import FriendsPage from "./features/friends/FriendsPage";
 import PetRoom from "./features/pet/PetRoom";
-import { applyPetAction, toggleTaskProgress, type PlannerProgress } from "./features/pet/progression";
+import { toggleTaskProgress, type PlannerProgress } from "./features/pet/progression";
 import TaskBoard from "./features/tasks/TaskBoard";
 import TaskReminder from "./features/tasks/TaskReminder";
-import type { Page, Pet, PetAction, Task } from "./types";
+import type { Page, Pet, Task } from "./types";
 
 const starterTasks: Task[] = [
   { id: "task-1", title: "Plan your first study session", done: false },
@@ -43,7 +44,8 @@ function loadProgress(): PlannerProgress {
 const navItems: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "⌂" },
   { id: "tasks", label: "Tasks", icon: "▤" },
-  { id: "pet", label: "Pet room", icon: "♡" },
+  { id: "pet", label: "Customise", icon: "✦" },
+  { id: "friends", label: "Friends", icon: "♡" },
   { id: "account", label: "Profile", icon: "◉" },
 ];
 
@@ -74,10 +76,6 @@ export default function App() {
       ...current,
       tasks: current.tasks.map((task) => task.id === taskId ? { ...task, reminderDismissed: true } : task),
     }));
-  }
-
-  function act(action: PetAction) {
-    setProgress((current) => applyPetAction(current, action));
   }
 
   function renamePet(name: string) {
@@ -125,17 +123,18 @@ export default function App() {
         {page === "home" && (
           <section className="dashboard-grid">
             <div className="welcome-card">
-              <div><p className="eyebrow">TODAY'S CHECK-IN</p><h2>Small wins count.</h2><p>Finish a task, care for your companion, and keep your day moving.</p><button className="primary-button" onClick={() => setPage("tasks")}>See your tasks <span>↗</span></button></div>
+              <div><p className="eyebrow">TODAY'S CHECK-IN</p><h2>Small wins count.</h2><p>Finish a task, care for your companion, and keep your day moving.</p><button className="primary-button" onClick={() => setPage("tasks")}>See your tasks <span>→</span></button></div>
               <div className="welcome-sparkle" aria-hidden="true">✦</div>
             </div>
             <div className="stat-card"><span className="stat-icon">✓</span><span className="stat-label">TASKS DONE</span><strong>{completedCount}<small> / {tasks.length}</small></strong><button className="text-button" onClick={() => setPage("tasks")}>Open task list →</button></div>
-            <div className="pet-preview"><div><p className="eyebrow">YOUR COMPANION</p><h2>{pet.name}</h2><p>Level {pet.level} · {pet.xp} XP</p><button className="text-button" onClick={() => setPage("pet")}>Visit pet room →</button></div><div className="pet-emoji" aria-label={`${pet.name}, your pet`}>{pet.avatar ?? "🐶"}</div></div>
+            <div className="pet-preview"><div><p className="eyebrow">YOUR COMPANION</p><h2>{pet.name}</h2><p>Level {pet.level} · {pet.xp} XP</p><button className="text-button" onClick={() => setPage("pet")}>Customise your pet →</button></div><div className="pet-emoji" aria-label={`${pet.name}, your pet`}>{pet.avatar ?? "🐶"}</div></div>
             <div className="next-card"><p className="eyebrow">A QUICK REMINDER</p><h3>{tasks.find((task) => !task.done)?.title ?? "You're all caught up!"}</h3><button className="text-button" onClick={() => setPage("tasks")}>View today's plan →</button></div>
           </section>
         )}
 
         {page === "tasks" && <TaskBoard tasks={tasks} onToggle={completeTask} onAdd={addTask} />}
-        {page === "pet" && <PetRoom pet={pet} onAction={act} onRename={renamePet} onCustomise={customisePet} />}
+        {page === "pet" && <PetRoom pet={pet} onRename={renamePet} onCustomise={customisePet} />}
+        {page === "friends" && <FriendsPage />}
         {page === "account" && <AccountPanel />}
 
         <footer className="footer">Made for first years <span>✦</span></footer>
