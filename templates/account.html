@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Your account · PC Pet{% endblock %}
+{% block content %}
+<div class="page-heading"><p class="eyebrow">YOUR SPACE</p><h1>Account settings</h1><p class="muted">Manage your profile and choose how PC Pet keeps in touch.</p></div>
+<section class="account-grid">
+  <div class="card profile-card">
+    <div class="avatar">{{ user['display_name'][0]|upper }}</div>
+    <p class="eyebrow">PROFILE</p><h2>{{ user['display_name'] }}</h2><p class="muted">{{ user['email'] }}</p>
+    <p class="joined">Member since {{ user['created_at'][:10] }}</p>
+  </div>
+  <div class="card settings-card">
+    <p class="eyebrow">PERSONAL DETAILS</p><h2>Edit your profile</h2>
+    <form method="post" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Display name<input name="display_name" maxlength="60" required value="{{ request.form.get('display_name', user['display_name']) }}"></label>
+      <label>Email address<input name="email" type="email" maxlength="254" required value="{{ request.form.get('email', user['email']) }}"></label>
+      <label class="toggle-row"><span><strong>Daily reminders</strong><small>A gentle nudge to check your tasks.</small></span><input type="checkbox" name="daily_reminders" {% if settings['daily_reminders'] %}checked{% endif %}></label>
+      <button class="primary-button" type="submit">Save changes <span aria-hidden="true">→</span></button>
+    </form>
+  </div>
+</section>
+<section class="card privacy-card">
+  <div><p class="eyebrow">PRIVACY & DATA</p><h2>Your data stays yours</h2><p class="muted">Download a copy of your profile and settings, or permanently remove your account.</p></div>
+  <div class="privacy-actions"><a class="secondary-button" href="{{ url_for('export_data') }}">Download my data</a><a class="danger-link" href="{{ url_for('delete_account') }}">Delete account</a></div>
+</section>
+{% endblock %}
