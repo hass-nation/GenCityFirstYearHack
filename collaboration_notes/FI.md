@@ -1,5 +1,7 @@
 # FI planner collaboration notes
 
+Keep this note current when changing FI files, shared interfaces, or handoffs. Record what changed and how it was verified.
+
 Use this handoff when working on Tasks, Task List, Reminders, Smart Reminders, Streaks, the Home dashboard, or Windows app tracking. The frontend is React and TypeScript with Vite. Flask serves the built frontend and provides the `/api` namespace.
 
 ## Ownership and handoffs
@@ -26,14 +28,35 @@ Keep planner logic in `src/features/tasks/`. Coordinate edits to `src/App.tsx`, 
 
 ## Windows activity tracking
 
+### Usage summaries for the pet
+
+The database teammate owns collecting and storing usage history. FI consumes one record per app or website and prints the resulting dictionary as JSON. The live window snapshot does not provide start/end history or notifications.
+
+Pass the teammate's records to `build_usage_summary(apps, now)` in [backend/usage_summary.py](../backend/usage_summary.py), or pipe JSON into `python -m backend.usage_summary --stdin`. Run `python -m backend.usage_summary` without arguments to print the built-in Moodle sample in your terminal. The sample uses this input:
+
+```json
+{
+  "now": "2026-11-21T22:00:00+00:00",
+  "apps": [{
+    "name": "Moodle", "category": "learning", "positive": true,
+    "daily_limit_seconds": 3600, "notifications_today": 0,
+    "sessions": [{"start": "2026-11-21T21:00:00+00:00", "end": "2026-11-21T21:50:00+00:00"}]
+  }]
+}
+```
+
+Provide completed, non-overlapping sessions per app. Each session start counts as one open. All durations are in seconds, weeks start Monday, and calendar buckets use the timezone supplied by `now`. Daily average includes idle days since first use. Common hours and weekdays are weighted by time used. Missing limits or notification counts return `null`.
+
+The response has `summary`, `apps`, and `pet_triggers`. The default thresholds are three inactive days, 80% of the daily limit for `near`, five opens today, and five consecutive days for positive apps. At 100% the status is `over`. The usage-drop message compares with the equivalent point last week, and the usual-hour message requires at least three days of use. TT can use the trigger `type`, `app`, and `message` when choosing pet behaviour.
+
 FI owns the Python collector and how its results feed Smart Reminders. The collector needs to run on the user's Windows PC. If Flask runs on that PC, it can call the collector locally. With a hosted Flask server, the collector needs to run as a separate local companion.
 
 | Python file | Inputs | Outputs and responsibility |
 | --- | --- | --- |
-| `backend/windows_activity.py` (planned) | A request to scan the current Windows desktop | Enumerates desktop windows and returns distinct app names. Start with a user-triggered snapshot. |
+| [backend/windows_activity.py](../backend/windows_activity.py) | A request to scan the current Windows desktop, with an optional `--browser-tabs` JSON export | `list_open_apps()` returns distinct process names. Run `python -m backend.windows_activity` for `apps`, combined `desktopTabs`, and per-window `desktopWindows`. An imported export adds `browserTabs`. |
 | [backend/api.py](../backend/api.py) | A proposed `GET /api/activity/apps` request from the local planner | Calls the collector and returns JSON such as `{"apps":["Code","chrome"]}`. Agree on how to report unavailable collection before wiring the frontend. |
 
-Browser tabs need a browser extension. The Python snapshot can identify Chrome or Edge as an open app, while the extension supplies tab domains if Smart Reminders needs them. Coordinate with HE before persisting or exporting activity and with TT if the pet displays the resulting prompts.
+The Python collector scans top-level windows with Windows UI Automation. The [Chrome and Edge extension](../browser_activity/README.md) exports tab titles and domains grouped by window. The CLI can merge that export into its report. The latest local verification found five Chrome windows with tab labels for each. Coordinate with HE before adding activity storage or account exports and with TT if the pet displays the resulting prompts.
 
 ## Shared data
 

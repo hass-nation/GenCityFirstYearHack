@@ -1,0 +1,7 @@
+{
+  "manifest_version": 3,
+  "name": "PC Pet Tab Snapshot",
+  "version": "0.1.0",
+  "permissions": ["tabs"],
+  "action": { "default_popup": "popup.html" }
+}
