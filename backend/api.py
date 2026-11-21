@@ -8,10 +8,12 @@ import hashlib
 import re
 import secrets
 import sqlite3
+import time
 from typing import Any
 from uuid import uuid4
 
 from flask import Blueprint, current_app, g, jsonify, request
+from werkzeug.security import check_password_hash, generate_password_hash
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
@@ -69,6 +71,12 @@ def database() -> sqlite3.Connection:
             );
             """
         )
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(users)")}
+        if "email" not in columns:
+            connection.execute("ALTER TABLE users ADD COLUMN email TEXT")
+        if "password_hash" not in columns:
+            connection.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+        connection.executescript("CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email COLLATE NOCASE) WHERE email IS NOT NULL; CREATE TABLE IF NOT EXISTS signin_attempts (email TEXT PRIMARY KEY, failures INTEGER NOT NULL DEFAULT 0, locked_until INTEGER NOT NULL DEFAULT 0);")
         g.database = connection
     return g.database
 
@@ -82,6 +90,11 @@ def close_database(_error: BaseException | None) -> None:
 
 def token_digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def request_payload() -> dict[str, Any]:
+    payload = request.get_json(silent=True)
+    return payload if isinstance(payload, dict) else {}
 
 
 def current_user() -> sqlite3.Row | None:
@@ -131,7 +144,7 @@ def health():
 
 @api.post("/users")
 def create_user():
-    payload = request.get_json(silent=True) or {}
+    payload = request_payload()
     display_name = str(payload.get("display_name", "")).strip()
     if not display_name or len(display_name) > 24:
         return jsonify({"error": "Choose a display name of 1–24 characters."}), 400
@@ -147,6 +160,79 @@ def create_user():
     connection.commit()
     user = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     return jsonify({"token": token, "profile": public_profile(user)}), 201
+
+
+@api.post("/auth/signup")
+def signup():
+    payload = request_payload()
+    name = str(payload.get("display_name", "")).strip()
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    if not name or len(name) > 24 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+        return jsonify(error="Enter a name of 1-24 characters and a valid email."), 400
+    if len(password) < 8 or len(password) > 256:
+        return jsonify(error="Password must be at least 8 characters."), 400
+    connection = database()
+    if connection.execute("SELECT 1 FROM users WHERE email = ? COLLATE NOCASE", (email,)).fetchone():
+        return jsonify(error="An account with that email already exists."), 409
+    token = secrets.token_urlsafe(32)
+    user_id = str(uuid4())
+    connection.execute("INSERT INTO users (id, display_name, friend_code, token_hash, email, password_hash) VALUES (?, ?, ?, ?, ?, ?)", (user_id, name, new_friend_code(connection), token_digest(token), email, generate_password_hash(password)))
+    connection.commit()
+    user = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    return jsonify(token=token, profile=public_profile(user)), 201
+
+
+@api.post("/auth/signin")
+def signin():
+    payload = request_payload()
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    connection = database()
+    attempt = connection.execute("SELECT failures, locked_until FROM signin_attempts WHERE email = ?", (email,)).fetchone()
+    now = int(time.time())
+    if attempt and attempt["locked_until"] > now:
+        return jsonify(error="Too many failed sign-in attempts. Try again in 15 minutes."), 429
+    user = connection.execute("SELECT * FROM users WHERE email = ? COLLATE NOCASE", (email,)).fetchone()
+    if user is None or not user["password_hash"] or not check_password_hash(user["password_hash"], password):
+        failures = (attempt["failures"] if attempt and attempt["locked_until"] <= now else 0) + 1
+        locked = now + 900 if failures >= 5 else 0
+        connection.execute("INSERT INTO signin_attempts (email, failures, locked_until) VALUES (?, ?, ?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures, locked_until=excluded.locked_until", (email, failures, locked))
+        connection.commit()
+        return jsonify(error="Email or password is incorrect."), 401
+    connection.execute("DELETE FROM signin_attempts WHERE email = ?", (email,))
+    token = secrets.token_urlsafe(32)
+    connection.execute("UPDATE users SET token_hash = ? WHERE id = ?", (token_digest(token), user["id"]))
+    connection.commit()
+    return jsonify(token=token, profile=public_profile(user))
+
+
+@api.post("/auth/signout")
+@require_user
+def signout():
+    connection = database()
+    connection.execute("UPDATE users SET token_hash = ? WHERE id = ?", (token_digest(secrets.token_urlsafe(32)), g.user["id"]))
+    connection.commit()
+    return "", 204
+
+
+@api.get("/me/export")
+@require_user
+def export_me():
+    connection = database()
+    user_id = g.user["id"]
+    friends = connection.execute("SELECT u.display_name, u.friend_code, u.pet_name, u.pet_avatar, u.pet_theme FROM friends f JOIN users u ON u.id=f.friend_id WHERE f.user_id=?", (user_id,)).fetchall()
+    messages = connection.execute("SELECT sender_id, recipient_id, body, created_at FROM messages WHERE sender_id=? OR recipient_id=? ORDER BY id", (user_id, user_id)).fetchall()
+    return jsonify(profile={**public_profile(g.user), "email": g.user["email"]}, friends=[dict(row) for row in friends], messages=[dict(row) for row in messages])
+
+
+@api.delete("/me")
+@require_user
+def delete_me():
+    connection = database()
+    connection.execute("DELETE FROM users WHERE id = ?", (g.user["id"],))
+    connection.commit()
+    return "", 204
 
 
 @api.get("/me")
@@ -196,7 +282,7 @@ def share_screen_time():
 @api.patch("/me/pet")
 @require_user
 def update_pet():
-    payload = request.get_json(silent=True) or {}
+    payload = request_payload()
     updates: dict[str, str] = {}
     for field, max_length in (("pet_name", 16), ("pet_avatar", 24)):
         if field in payload:
@@ -241,7 +327,7 @@ def list_friends():
 @api.post("/friends")
 @require_user
 def add_friend():
-    payload = request.get_json(silent=True) or {}
+    payload = request_payload()
     friend_code = re.sub(r"\s+", "", str(payload.get("friend_code", ""))).upper()
     if not re.fullmatch(r"[A-HJ-NP-Z2-9]{8}", friend_code):
         return jsonify({"error": "Enter an 8-character friend code."}), 400
@@ -279,7 +365,7 @@ def get_messages():
 @api.post("/messages")
 @require_user
 def send_message():
-    payload = request.get_json(silent=True) or {}
+    payload = request_payload()
     friend_code = re.sub(r"\s+", "", str(payload.get("friend_code", ""))).upper()
     body = str(payload.get("body", "")).strip()
     if not body or len(body) > 500:

@@ -5,7 +5,7 @@ import type { PlannerTask } from "./tasks.ts";
 
 export function getDashboardSummary(tasks: readonly PlannerTask[], now: Date) {
   const remaining = getTaskList(tasks).length;
-  const [nextReminder] = getReminders(tasks);
+  const [nextReminder] = getReminders(tasks, now);
 
   return {
     completed: tasks.length - remaining,
