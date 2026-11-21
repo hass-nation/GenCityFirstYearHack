@@ -9,7 +9,9 @@ enum GenCityPetOverlay {
         let delegate = OverlayAppDelegate()
         app.delegate = delegate
         app.setActivationPolicy(.accessory)
-        app.run()
+        withExtendedLifetime(delegate) {
+            app.run()
+        }
     }
 }
 
@@ -38,6 +40,8 @@ final class OverlayAppDelegate: NSObject, NSApplicationDelegate {
             let visible = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(x: visible.maxX - panel.frame.width - 22, y: visible.minY + 22))
         }
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
         panel.orderFrontRegardless()
         controller.restoreProfile()
         self.controller = controller

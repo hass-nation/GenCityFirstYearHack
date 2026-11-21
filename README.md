@@ -24,13 +24,32 @@ A student planner with a customisable virtual dog that floats above your Mac app
 - AppKit for the macOS floating overlay
 - SQLite for friend profiles and message delivery
 
-## Run the macOS pet
+## Run the demo on macOS
 
-See [desktop/PetOverlay/README.md](desktop/PetOverlay/README.md) for local run instructions. Friend messages between devices require both pets to use the same hosted Flask server; `127.0.0.1` only reaches the current Mac.
+From the project root, build the dashboard and install the Flask requirements:
 
-## Run the browser app
+```sh
+npm install
+npm run build
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
 
-Run `npm install`, then `npm run build`. Start Flask with `python -m flask --app app run --host 127.0.0.1 --port 5000` to serve the built app and API.
+Start Flask in one terminal:
+
+```sh
+python -m flask --app app run --host 127.0.0.1 --port 5000
+```
+
+Open the dashboard at `http://127.0.0.1:5000`. In another terminal, package and launch the floating dog:
+
+```sh
+sh desktop/PetOverlay/package_app.sh
+open desktop/PetOverlay/.build/GenCityPetOverlay.app
+```
+
+In Biscuit's **Friends** panel, create a profile to get a friend code. For messages to reach friends on other devices, host Flask with a persistent SQLite database and HTTPS; both devices must use the same server URL. The local `127.0.0.1` server only reaches this Mac. See [the overlay guide](desktop/PetOverlay/README.md) for details.
 
 ## Feature owners
 
