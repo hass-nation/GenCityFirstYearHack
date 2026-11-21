@@ -2,6 +2,24 @@
 
 Keep this note current when changing FI files, shared interfaces, or handoffs. Record what changed and how it was verified.
 
+## Usage tracking handoff
+
+### What FI has done
+
+- Built a Windows snapshot that lists open apps and desktop tabs by window. Added an optional Chrome and Edge tab snapshot extension.
+- Built a foreground app collector. `python test.py` measures a 10-second live capture and prints the report from the in-memory sessions.
+- Built `build_usage_summary(apps, now)` to turn session history and optional metadata into usage totals, per-app metrics, and pet triggers. Verified the live capture and the summary with sample records.
+
+### What’s left for the database teammate
+
+1. Agree with FI on the session handoff. The live collector currently returns a summary, so the integration needs access to the raw app name and session start and end timestamps before aggregation.
+2. Store those sessions per user and return their history in the `apps` shape documented below. Include category, whether the app counts toward a positive streak, and any saved daily limit. Pass a notification count when one is available.
+3. Give FI the function or endpoint that returns the history. FI can pass it to `build_usage_summary(apps, now)` and print the result. Verify with multiple sessions across days and a reload that the returned history persists.
+
+Website-level duration needs a browser-side session collector. The existing extension exports open tabs at a point in time.
+
+For a combined smoke run, run `python test.py` from the project root. It prints the Windows app and tab snapshot and all six planner examples, then samples the foreground app for 10 seconds. Switch to the app you want to measure when prompted. [backend/live_usage.py](../backend/live_usage.py) passes the observed sessions to the usage summary in memory. The report covers that run and does not measure individual website time or include database history. The planner examples require Node.js.
+
 Use this handoff when working on Tasks, Task List, Reminders, Smart Reminders, Streaks, the Home dashboard, or Windows app tracking. The frontend is React and TypeScript with Vite. Flask serves the built frontend and provides the `/api` namespace.
 
 ## Ownership and handoffs
