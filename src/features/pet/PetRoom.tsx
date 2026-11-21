@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { Pet, PetAction } from "../../types";
+import { PLAY_ENERGY, PLAY_XP, TASK_XP, XP_PER_LEVEL } from "./progression";
 
 type Props = {
   pet: Pet;
@@ -33,8 +34,8 @@ function replyTo(message: string, name: string) {
   const text = message.toLowerCase();
   if (/\b(hello|hi|hey)\b/.test(text)) return `Hi there! I'm so glad you're here. What shall we do together?`;
   if (/\b(sad|bad|hard|stress|tired|worry)\b/.test(text)) return `That sounds like a lot. Let's take one small thing at a time. I'm right here with you. 💜`;
-  if (/\b(task|study|work|homework|focus)\b/.test(text)) return `You've got this! A tiny first step counts. Finish a task and we'll earn 20 XP together.`;
-  if (/\b(play|game|fun)\b/.test(text)) return `Play time! Use the Play button and I'll get a happiness boost (and 5 XP!).`;
+  if (/\b(task|study|work|homework|focus)\b/.test(text)) return `You've got this! A tiny first step counts. Finish a task and we'll earn ${TASK_XP} XP together.`;
+  if (/\b(play|game|fun)\b/.test(text)) return `Play time! Use the Play button and I'll get a happiness boost (and ${PLAY_XP} XP!).`;
   if (/\b(food|eat|hungry|snack)\b/.test(text)) return `A snack sounds lovely. Tap Feed and I'll feel much better! 🍓`;
   if (/\b(thanks|thank you)\b/.test(text)) return `Always, ${name}! You're doing great. ✨`;
   return `I like chatting with you! Tell me about your day, or we can take a break together. ✨`;
@@ -45,7 +46,8 @@ export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props)
   const [messages, setMessages] = useState<ChatMessage[]>([
     { from: "pet", text: `Hi! I'm ${pet.name}. I'm happy you're here. What would you like to do?` },
   ]);
-  const levelXp = pet.xp % 100;
+  const levelXp = pet.xp % XP_PER_LEVEL;
+  const canPlay = pet.energy >= PLAY_ENERGY;
   const moodEmoji = pet.energy === 0 ? "😴" : pet.hunger > 70 ? "🥺" : pet.happiness < 30 ? "😿" : "🐶";
   const mood = pet.energy === 0 ? "A little sleepy" : pet.hunger > 70 ? "Ready for a snack" : pet.happiness < 30 ? "Could use some playtime" : "Feeling cosy and content";
 
@@ -81,14 +83,15 @@ export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props)
       </div>
       <div className="action-row" aria-label="Pet care actions">
         <button onClick={() => onAction("feed")} disabled={pet.hunger <= 0} title={pet.hunger <= 0 ? "I'm full!" : "Give your pet a snack"}>🍓 Feed</button>
-        <button onClick={() => onAction("play")} disabled={pet.energy <= 0} title={pet.energy <= 0 ? "Rest first to get some energy" : "Play together to boost happiness and earn 5 XP"}>🪀 Play <span className="action-reward">+5 XP</span></button>
+        <button onClick={() => onAction("play")} disabled={!canPlay} title={canPlay ? `Play costs ${PLAY_ENERGY}% energy` : `Rest first. Play needs ${PLAY_ENERGY}% energy.`}>🪀 Play <span className="action-reward">+{PLAY_XP} XP</span></button>
         <button onClick={() => onAction("rest")} disabled={pet.energy >= 100} title={pet.energy >= 100 ? "Energy is full" : "Rest to restore energy"}>💤 Rest</button>
       </div>
 
       <section className="pet-xp" aria-label="Level progress">
-        <div className="xp-heading"><span>✨ Level {pet.level}</span><strong>{levelXp} / 100 XP</strong></div>
-        <div className="xp-track" role="meter" aria-label="XP progress to next level" aria-valuemin={0} aria-valuemax={100} aria-valuenow={levelXp}><span style={{ width: `${levelXp}%` }} /></div>
-        <p className="xp-line">{100 - levelXp} XP to level {pet.level + 1} · Tasks give 20 XP; playing gives 5 XP.</p>
+        <div className="xp-heading"><span>✨ Level {pet.level}</span><strong>{levelXp} / {XP_PER_LEVEL} XP</strong></div>
+        <div className="xp-track" role="meter" aria-label="XP progress to next level" aria-valuemin={0} aria-valuemax={XP_PER_LEVEL} aria-valuenow={levelXp}><span style={{ width: `${levelXp / XP_PER_LEVEL * 100}%` }} /></div>
+        <p className="xp-line">{XP_PER_LEVEL - levelXp} XP to level {pet.level + 1} · {TASK_XP} XP per new task completion · {PLAY_XP} XP per play</p>
+        {!canPlay && <p className="xp-line">Rest to restore enough energy to play.</p>}
       </section>
 
       <section className="customise-panel" aria-labelledby="customise-title">

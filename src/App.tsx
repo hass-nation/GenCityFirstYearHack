@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AccountPanel from "./features/accounts/AccountPanel";
 import PetRoom from "./features/pet/PetRoom";
+import { applyPetAction, toggleTaskProgress, type PlannerProgress } from "./features/pet/progression";
 import TaskBoard from "./features/tasks/TaskBoard";
 import TaskReminder from "./features/tasks/TaskReminder";
 import type { Page, Pet, PetAction, Task } from "./types";
@@ -22,11 +23,6 @@ const starterPet: Pet = {
   roomTheme: "lavender",
 };
 
-function withXp(pet: Pet, addedXp: number): Pet {
-  const xp = pet.xp + addedXp;
-  return { ...pet, xp, level: Math.floor(xp / 100) + 1 };
-}
-
 function load<T,>(key: string, fallback: T): T {
   try {
     const saved = localStorage.getItem(key);
@@ -36,10 +32,12 @@ function load<T,>(key: string, fallback: T): T {
   }
 }
 
-function loadPet(): Pet {
-  const saved = load("gencity-pet", starterPet);
+function loadProgress(): PlannerProgress {
+  const saved = load<Pick<PlannerProgress, "tasks" | "pet"> | null>("gencity-progress", null);
+  const tasks = saved?.tasks ?? load("gencity-tasks", starterTasks);
+  const pet = saved?.pet ?? load("gencity-pet", starterPet);
   // The chick was the original demo default, before companions were selectable.
-  return saved.avatar === "🐣" ? { ...saved, avatar: "🐶" } : saved;
+  return { tasks, pet: pet.avatar === "🐣" ? { ...pet, avatar: "🐶" } : pet };
 }
 
 const navItems: { id: Page; label: string; icon: string }[] = [
@@ -51,53 +49,43 @@ const navItems: { id: Page; label: string; icon: string }[] = [
 
 export default function App() {
   const [page, setPage] = useState<Page>("home");
-  const [tasks, setTasks] = useState<Task[]>(() => load("gencity-tasks", starterTasks));
-  const [pet, setPet] = useState<Pet>(loadPet);
+  const [progress, setProgress] = useState(loadProgress);
+  const { tasks, pet, reward } = progress;
 
   useEffect(() => {
-    localStorage.setItem("gencity-tasks", JSON.stringify(tasks));
-  }, [tasks]);
+    localStorage.setItem("gencity-progress", JSON.stringify({ tasks, pet }));
+  }, [tasks, pet]);
 
   useEffect(() => {
-    localStorage.setItem("gencity-pet", JSON.stringify(pet));
     document.title = pet.hunger > 70 ? `${pet.name} needs a snack!` : "GenCity Pet Planner";
   }, [pet]);
 
   function completeTask(taskId: string) {
-    setTasks((current) =>
-      current.map((task) => (task.id === taskId ? { ...task, done: !task.done } : task)),
-    );
-    const task = tasks.find((item) => item.id === taskId);
-    if (task && !task.done) {
-      setPet((current) => {
-        return { ...withXp(current, 20), happiness: Math.min(100, current.happiness + 5) };
-      });
-    }
+    setProgress((current) => toggleTaskProgress(current, taskId));
   }
 
   function addTask(task: Pick<Task, "title" | "description" | "dueAt">) {
     const newTask = { ...task, id: crypto.randomUUID(), done: false };
-    setTasks((current) => [...current, newTask]);
+    setProgress((current) => ({ ...current, tasks: [...current.tasks, newTask] }));
   }
 
   function dismissTaskReminder(taskId: string) {
-    setTasks((current) => current.map((task) => task.id === taskId ? { ...task, reminderDismissed: true } : task));
+    setProgress((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) => task.id === taskId ? { ...task, reminderDismissed: true } : task),
+    }));
   }
 
   function act(action: PetAction) {
-    setPet((current) => {
-      if (action === "feed") return { ...current, hunger: Math.max(0, current.hunger - 25), happiness: Math.min(100, current.happiness + 5) };
-      if (action === "play") return { ...withXp(current, 5), happiness: Math.min(100, current.happiness + 15), energy: Math.max(0, current.energy - 15) };
-      return { ...current, energy: Math.min(100, current.energy + 25) };
-    });
+    setProgress((current) => applyPetAction(current, action));
   }
 
   function renamePet(name: string) {
-    setPet((current) => ({ ...current, name }));
+    setProgress((current) => ({ ...current, pet: { ...current.pet, name } }));
   }
 
   function customisePet(change: Partial<Pick<Pet, "avatar" | "roomTheme">>) {
-    setPet((current) => ({ ...current, ...change }));
+    setProgress((current) => ({ ...current, pet: { ...current.pet, ...change } }));
   }
 
   const completedCount = tasks.filter((task) => task.done).length;
@@ -121,6 +109,18 @@ export default function App() {
           <div><p className="eyebrow">YOUR CAMPUS COMPANION</p><h1>{page === "home" ? "Good day, student." : navItems.find((item) => item.id === page)?.label}</h1></div>
           <div className="level-chip">LVL {pet.level} <span>✦</span></div>
         </header>
+
+        <div role="status" aria-atomic="true" className={reward ? "xp-feedback" : undefined}>
+          {reward && (
+            <>
+              <strong className="xp-feedback-amount">+{reward.amount} XP</strong>
+              <div>
+                <strong>{reward.levelReached ? `${pet.name || "Your pet"} reached level ${reward.levelReached}!` : reward.source === "task" ? "Task reward earned" : "Playtime reward earned"}</strong>
+                <p>{reward.levelReached ? `“We levelled up together!” · ${pet.xp} XP total` : `${pet.xp} XP total`}</p>
+              </div>
+            </>
+          )}
+        </div>
 
         {page === "home" && (
           <section className="dashboard-grid">

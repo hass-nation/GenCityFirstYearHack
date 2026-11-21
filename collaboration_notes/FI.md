@@ -141,3 +141,26 @@ Task and reminder work is paused while teammates make the desktop pet compatible
 
 - **Gamification, XP, and levels.** Start from the existing progression in `src/App.tsx` and `src/features/pet/PetRoom.tsx`. The planner currently awards 20 XP for completing a task and 5 XP for playing, with one level per 100 XP. XP lives in browser storage. Coordinate with TT on reward rules, level feedback, and what progression should eventually carry across devices.
 - **Friends mode.** Build on the existing Flask friend-code and messaging endpoints in `backend/api.py` and the Friends flow in the macOS overlay. Coordinate with the desktop and profile owners on how the planner should use those profiles and which pet details friends can see before extending the API.
+
+### Proposed gamification plan
+
+1. **Make progression consistent.** Keep task completion at +20 XP, play at +5 XP, and levels at 100 XP each. Award task XP once per task, even if it is reopened, and use the pet's energy to limit play. Keep one reward rule shared by the UI and progression logic. Preserve saved XP and levels during rollout.
+2. **Make rewards visible.** Show XP gained after each rewarded action, the progress to the next level, and a pet reaction when levelling up. Try milestones at levels 2, 3, and 5, with a new accessory, room decoration, or celebration as candidate rewards. Keep existing pet choices available.
+3. **Add a study streak.** Count a day when the student earns XP from their first task completion that day. Show the current streak and use encouragement to mark milestones, without taking away XP when a day is missed. Add this after the core reward flow is verified.
+4. **Build cooperative Friends features.** Reuse friend codes and messaging to let friends cheer each other on. Start with an optional view of pet name, avatar, and level. Explore a shared weekly goal after profile and progression sync are agreed with TT and the backend owner. Task names and activity history stay private.
+
+First implementation slice: verify that reopening and re-completing a task cannot farm XP, that playing respects available energy, and that crossing 100 XP updates the level and survives reload. Test Friends with two profiles before adding shared goals. These are proposed rules for team review. Desktop reminder integration remains paused.
+
+### XP and levels implemented
+
+- `src/features/pet/progression.ts` owns the reward rules. A first task completion grants 20 XP. Play grants 5 XP and costs 15 energy points, so Play is disabled below 15 energy. Each 100 XP advances the pet one level. The planner shows the latest XP gain and the pet reacts when the level increases.
+- `Task.xpAwarded` remains true after reopening. Older tasks that are already checked count as rewarded. Older unchecked tasks have no reward history, so they are eligible once. `App.tsx` reads old `gencity-tasks` and `gencity-pet` data on first load and saves task and pet state together under `gencity-progress`. The reward message is transient. Progress remains local to the browser.
+- Verified with `node --test tests/progression.test.mjs`, `npm run build`, and Chrome. The browser check covered migration from saved state, crossing 100 XP, blocking low-energy play, repeated completion after reload, and reminder dismissal.
+
+Next slices are milestone rewards, the study streak, and Friends progression sharing. Coordinate shared profiles and progression with TT and the backend owner before adding cross-device XP.
+
+### Updated XP direction: app and website streaks
+
+The intended progression is per app or website. Each eligible app earns its own XP from active usage and from continuing a streak. Add those awards to one pet XP total to determine its level. Keep the existing 100 XP per level for the prototype. The current task and play rewards are the first prototype; app usage does not award XP yet.
+
+Proposed rule for team review: a qualifying day is at least 10 minutes of foreground use for a user-selected app or website. Award +10 XP for that app's qualifying day, with a +5 XP bonus from day three of its consecutive streak onward. Award each app/day only once, using a stable app ID and the user's local date, so rerunning the report cannot award XP again. Foreground Windows app sessions can supply the timing. Website streaks need active-tab session records. Coordinate with the database teammate on persisting award history and with TT on showing each app's contribution to the pet's level.
