@@ -122,3 +122,17 @@ The overlay uses these shared Flask routes in [`backend/api.py`](../backend/api.
 The token hash, profiles, friendships, and message queue are stored in `instance/gencity.sqlite3`. The overlay token is kept in macOS user defaults. For messages between devices, both overlays must use the same hosted Flask server and persistent database; the documented local server binds only to `127.0.0.1` and is reachable on that Mac only. The recipient overlay must be running to show a live bubble.
 
 Verified for this commit: `npm run build`, `swift build` in `desktop/PetOverlay`, `git diff --check`, Python syntax compilation, and a Flask client smoke check covering profile creation, friend pairing, message delivery, and pet customisation. The Swift build emits two linker search-path warnings from the installed Command Line Tools but succeeds.
+
+## HE handoff — integration blocker (21 Nov)
+
+HE's account work (`feature/accounts`, latest `9d555da`) has not been merged into `main`, and nobody should merge it until the team agrees on the points below.
+
+- **Two `app.py` files.** On `main`, `app.py` serves the built React frontend and registers `backend/api.py`. On `feature/accounts`, `app.py` is a Flask/Jinja app with email/password accounts, sessions, CSRF, settings, privacy, data export and deletion. The branch was cut from `8a4be86`, before the backend work landed, so a merge will conflict on `app.py`, `.gitignore`, `requirements.txt` and `README.md`.
+- **Two user tables.** `backend/api.py` stores users with bearer tokens and friend codes in `instance/gencity.sqlite3`. HE's `account_store.py` stores users with email and a password hash in `instance/pcpet.sqlite`. Usage sessions, tasks and pets need one user ID to belong to.
+- **Frontend choice.** `main` is still React + Vite. HE's pages are Jinja.
+
+Decisions needed before HE merges or builds usage storage:
+1. Which user system is the source of truth, or how the two are linked.
+2. Whether the frontend stays React or moves to Flask/Jinja.
+
+Until then, HE won't change `app.py`, `backend/api.py` or the database on `main`. The usage-history storage FI asked for above (per-user sessions in the `apps` shape) waits on decision 1.
