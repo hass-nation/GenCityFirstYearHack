@@ -8,6 +8,8 @@ type Props = {
   onCustomise: (change: Partial<Pick<Pet, "avatar" | "roomTheme">>) => void;
 };
 
+type ChatMessage = { from: "you" | "pet"; text: string };
+
 const avatars = ["🐣", "🐱", "🐸", "🦊", "🐼"];
 const themes: { id: NonNullable<Pet["roomTheme"]>; label: string; emoji: string }[] = [
   { id: "lavender", label: "Lavender", emoji: "💜" },
@@ -40,7 +42,7 @@ function replyTo(message: string, name: string) {
 
 export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props) {
   const [draft, setDraft] = useState("");
-  const [messages, setMessages] = useState<{ from: "you" | "pet"; text: string }[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     { from: "pet", text: `Hi! I'm ${pet.name}. I'm happy you're here. What would you like to do?` },
   ]);
   const levelXp = pet.xp % 100;
@@ -51,7 +53,10 @@ export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props)
     event.preventDefault();
     const message = draft.trim();
     if (!message) return;
-    setMessages((current) => [...current, { from: "you", text: message }, { from: "pet", text: replyTo(message, pet.name) }].slice(-9));
+    setMessages((current) => {
+      const next: ChatMessage[] = [...current, { from: "you", text: message }, { from: "pet", text: replyTo(message, pet.name) }];
+      return next.slice(-9);
+    });
     setDraft("");
   }
 
