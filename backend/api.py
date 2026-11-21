@@ -11,16 +11,16 @@ from typing import Any
 from uuid import uuid4
 
 from flask import Blueprint, current_app, g, jsonify, request
-from pathlib import Path
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
 
 def database() -> sqlite3.Connection:
     if "database" not in g:
-        database_path = Path(current_app.config["DATABASE_PATH"])
-        database_path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(database_path)
+        from pathlib import Path
+
+        Path(current_app.instance_path).mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(Path(current_app.instance_path) / "gencity.sqlite3")
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.executescript(
