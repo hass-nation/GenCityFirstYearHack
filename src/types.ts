@@ -1,4 +1,4 @@
-export type Page = "home" | "tasks" | "pet" | "account";
+export type Page = "home" | "tasks" | "activity" | "pet" | "friends" | "account";
 
 export type Task = {
   id: string;

@@ -64,6 +64,10 @@ def list_open_apps() -> list[str]:
     return _snapshot(include_tabs=False)["apps"]
 
 
+def list_open_app_tabs() -> dict:
+    return {name.lower(): windows for name, windows in _snapshot(include_tabs=True)["desktopWindows"].items()}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--browser-tabs", type=Path, help="JSON snapshot from the browser extension")

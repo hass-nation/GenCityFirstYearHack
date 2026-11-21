@@ -1,4 +1,5 @@
 import type { Pet, PetAction, Task } from "../../types.ts";
+import type { ActivityState } from "../activity/activity.ts";
 
 export const TASK_XP = 20;
 export const PLAY_XP = 5;
@@ -7,21 +8,23 @@ export const PLAY_ENERGY = 15;
 
 export type XpReward = {
   amount: number;
-  source: "task" | "play";
+  source: "task" | "play" | "activity";
   levelReached?: number;
+  detail?: string;
 };
 
 export type PlannerProgress = {
   tasks: Task[];
   pet: Pet;
   reward?: XpReward;
+  activity?: ActivityState;
 };
 
-function awardXp(pet: Pet, source: XpReward["source"]) {
-  const amount = source === "task" ? TASK_XP : PLAY_XP;
+export function awardXp(pet: Pet, source: XpReward["source"], amount: number, detail?: string) {
   const xp = pet.xp + amount;
   const level = Math.floor(xp / XP_PER_LEVEL) + 1;
   const reward: XpReward = { amount, source };
+  if (detail) reward.detail = detail;
   if (level > pet.level) reward.levelReached = level;
   return { pet: { ...pet, xp, level }, reward };
 }
@@ -37,7 +40,7 @@ export function toggleTaskProgress(state: PlannerProgress, id: string): PlannerP
 
   const pet = { ...state.pet, happiness: Math.min(100, state.pet.happiness + 5) };
   if (alreadyAwarded) return { ...state, tasks, pet };
-  return { tasks, ...awardXp(pet, "task") };
+  return { ...state, tasks, ...awardXp(pet, "task", TASK_XP) };
 }
 
 export function applyPetAction(state: PlannerProgress, action: PetAction): PlannerProgress {
@@ -52,6 +55,6 @@ export function applyPetAction(state: PlannerProgress, action: PetAction): Plann
 
   return {
     ...state,
-    ...awardXp({ ...pet, happiness: Math.min(100, pet.happiness + 15), energy: pet.energy - PLAY_ENERGY }, "play"),
+    ...awardXp({ ...pet, happiness: Math.min(100, pet.happiness + 15), energy: pet.energy - PLAY_ENERGY }, "play", PLAY_XP),
   };
 }

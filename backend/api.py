@@ -50,6 +50,17 @@ def database() -> sqlite3.Connection:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS messages_inbox ON messages(recipient_id, id);
+            CREATE TABLE IF NOT EXISTS parties (
+                code TEXT PRIMARY KEY,
+                host_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                ends_at INTEGER
+            );
+            CREATE TABLE IF NOT EXISTS party_members (
+                user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                party_code TEXT NOT NULL REFERENCES parties(code) ON DELETE CASCADE,
+                ready INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS party_members_by_code ON party_members(party_code);
             """
         )
         g.database = connection

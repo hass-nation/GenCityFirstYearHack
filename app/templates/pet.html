@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pet room · PC Pet</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #141126; color: #f5f1ff; }
+    main { max-width: 36rem; margin: 3rem auto; padding: 0 1rem; }
+    a { color: #c6b5ff; }
+    h1 { margin: 1rem 0; }
+    [role=log] { display: grid; gap: .6rem; max-height: 55vh; min-height: 8rem; overflow: auto; padding: 1rem; background: #1d1930; border-radius: 14px; }
+    .bubble { margin: 0; padding: .65rem .85rem; max-width: min(85%, 32rem); width: fit-content; border-radius: 12px; background: #302747; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .you { justify-self: end; background: #463861; }
+    form { display: flex; flex-wrap: wrap; gap: .6rem; }
+    input, button { font: inherit; padding: .65rem; border: 1px solid #766990; border-radius: 8px; }
+    input { flex: 1; min-width: 8rem; background: #211b34; color: inherit; }
+    button { background: #b6a2ff; color: #211a36; font-weight: 600; }
+    button:disabled { opacity: .65; }
+    #typing { min-height: 1.5rem; margin: .4rem 0; color: #d5c9eb; }
+  </style>
+  <script src="{{ url_for('static', filename='pet-chat.js') }}" defer></script>
+</head>
+<body>
+  <main>
+    <a href="{{ url_for('home') }}">Back to planner</a>
+    <h1>Talk to <span id="pet-name">Biscuit</span></h1>
+    <div id="chat-log" role="log" aria-label="Pet chat"></div>
+    <p id="typing" role="status"></p>
+    <form id="pet-chat" action="{{ url_for('pet_chat.chat') }}">
+      <input id="message" aria-label="Message your pet" maxlength="180" required placeholder="Say something to your pet…">
+      <button type="submit">Send</button>
+    </form>
+  </main>
+</body>
+</html>

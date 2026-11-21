@@ -1,5 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AccountPanel from "./features/accounts/AccountPanel";
+import ActivityPanel from "./features/activity/ActivityPanel";
+import { recordAppCapture, setAppPreference, type ActivityCapture } from "./features/activity/activity";
+import { useActivityCapture } from "./features/activity/useActivityCapture";
+import FriendsPanel from "./features/friends/FriendsPanel";
 import PetRoom from "./features/pet/PetRoom";
 import { applyPetAction, toggleTaskProgress, type PlannerProgress } from "./features/pet/progression";
 import TaskBoard from "./features/tasks/TaskBoard";
@@ -33,28 +37,35 @@ function load<T,>(key: string, fallback: T): T {
 }
 
 function loadProgress(): PlannerProgress {
-  const saved = load<Pick<PlannerProgress, "tasks" | "pet"> | null>("gencity-progress", null);
+  const saved = load<Omit<PlannerProgress, "reward"> | null>("gencity-progress", null);
   const tasks = saved?.tasks ?? load("gencity-tasks", starterTasks);
   const pet = saved?.pet ?? load("gencity-pet", starterPet);
   // The chick was the original demo default, before companions were selectable.
-  return { tasks, pet: pet.avatar === "🐣" ? { ...pet, avatar: "🐶" } : pet };
+  return { tasks, pet: pet.avatar === "🐣" ? { ...pet, avatar: "🐶" } : pet, activity: saved?.activity };
 }
 
 const navItems: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "⌂" },
   { id: "tasks", label: "Tasks", icon: "▤" },
+  { id: "activity", label: "Activity", icon: "◷" },
   { id: "pet", label: "Pet room", icon: "♡" },
+  { id: "friends", label: "Friends", icon: "♧" },
   { id: "account", label: "Profile", icon: "◉" },
 ];
 
 export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [progress, setProgress] = useState(loadProgress);
-  const { tasks, pet, reward } = progress;
+  const { tasks, pet, reward, activity } = progress;
+  const onCapture = useCallback((capture: ActivityCapture) => {
+    const now = new Date();
+    setProgress((current) => recordAppCapture(current, capture, now));
+  }, []);
+  const tracking = useActivityCapture(onCapture);
 
   useEffect(() => {
-    localStorage.setItem("gencity-progress", JSON.stringify({ tasks, pet }));
-  }, [tasks, pet]);
+    localStorage.setItem("gencity-progress", JSON.stringify({ tasks, pet, activity }));
+  }, [tasks, pet, activity]);
 
   useEffect(() => {
     document.title = pet.hunger > 70 ? `${pet.name} needs a snack!` : "GenCity Pet Planner";
@@ -88,6 +99,11 @@ export default function App() {
     setProgress((current) => ({ ...current, pet: { ...current.pet, ...change } }));
   }
 
+  function changeAppPreference(name: string, change: { rewards?: boolean; hidden?: boolean }) {
+    const now = new Date();
+    setProgress((current) => setAppPreference(current, name, change, now));
+  }
+
   const completedCount = tasks.filter((task) => task.done).length;
 
   return (
@@ -115,8 +131,8 @@ export default function App() {
             <>
               <strong className="xp-feedback-amount">+{reward.amount} XP</strong>
               <div>
-                <strong>{reward.levelReached ? `${pet.name || "Your pet"} reached level ${reward.levelReached}!` : reward.source === "task" ? "Task reward earned" : "Playtime reward earned"}</strong>
-                <p>{reward.levelReached ? `“We levelled up together!” · ${pet.xp} XP total` : `${pet.xp} XP total`}</p>
+                <strong>{reward.levelReached ? `${pet.name || "Your pet"} reached level ${reward.levelReached}!` : reward.source === "activity" ? "App reward earned" : reward.source === "task" ? "Task reward earned" : "Playtime reward earned"}</strong>
+                <p>{[reward.levelReached && "“We levelled up together!”", reward.detail, `${pet.xp} XP total`].filter(Boolean).join(" · ")}</p>
               </div>
             </>
           )}
@@ -135,7 +151,9 @@ export default function App() {
         )}
 
         {page === "tasks" && <TaskBoard tasks={tasks} onToggle={completeTask} onAdd={addTask} />}
+        {page === "activity" && <ActivityPanel activity={activity} tracking={tracking} onPreference={changeAppPreference} />}
         {page === "pet" && <PetRoom pet={pet} onAction={act} onRename={renamePet} onCustomise={customisePet} />}
+        {page === "friends" && <FriendsPanel />}
         {page === "account" && <AccountPanel />}
 
         <footer className="footer">Made for first years <span>✦</span></footer>

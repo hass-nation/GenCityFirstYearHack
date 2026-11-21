@@ -1,16 +1,26 @@
 from __future__ import annotations
 
+import os
+import secrets
 from pathlib import Path
 
 from flask import Flask, send_from_directory
 
 from backend.api import api
+from backend.activity_api import activity_api
+from backend.parties import parties
+from .chat import pet_chat
 
 
 def create_app(frontend_dir: Path | None = None) -> Flask:
-    app = Flask(__name__, static_folder=None)
+    root = Path(__file__).resolve().parent.parent
+    app = Flask(__name__, instance_path=str(root / "instance"))
+    app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
     app.register_blueprint(api)
-    dist = frontend_dir if frontend_dir is not None else Path(app.root_path) / "dist"
+    app.register_blueprint(activity_api)
+    app.register_blueprint(parties)
+    app.register_blueprint(pet_chat)
+    dist = (root / frontend_dir).resolve() if frontend_dir is not None else root / "dist"
 
     @app.get("/")
     def home():

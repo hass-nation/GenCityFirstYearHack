@@ -164,3 +164,40 @@ Next slices are milestone rewards, the study streak, and Friends progression sha
 The intended progression is per app or website. Each eligible app earns its own XP from active usage and from continuing a streak. Add those awards to one pet XP total to determine its level. Keep the existing 100 XP per level for the prototype. The current task and play rewards are the first prototype; app usage does not award XP yet.
 
 Proposed rule for team review: a qualifying day is at least 10 minutes of foreground use for a user-selected app or website. Award +10 XP for that app's qualifying day, with a +5 XP bonus from day three of its consecutive streak onward. Award each app/day only once, using a stable app ID and the user's local date, so rerunning the report cannot award XP again. Foreground Windows app sessions can supply the timing. Website streaks need active-tab session records. Coordinate with the database teammate on persisting award history and with TT on showing each app's contribution to the pet's level.
+
+### Flask pet chat handoff
+
+Flask serves a standalone pet room at `/pet` and accepts chat messages at `POST /pet/chat`. The same-origin page reads the planner's existing browser storage for the saved pet and next task. Completion timestamps can supply a streak when present. The React starter is untouched. The Flask factory moved from `app.py` into `app/__init__.py` to support `app/chat.py`; the Flask CLI command and SQLite location stay the same.
+
+The server sends the context, message, and up to three recent exchanges to the Snowflake agent when configured. Missing configuration, unusable responses, and request failures use the scripted replies. The Flask tests cover the documented response shape and simulated failure cases. Live agent verification requires Snowflake credentials and an accessible agent.
+
+### Discover apps from usage
+
+Proposed update to the XP plan: build each user's app list from their observed foreground sessions. An app appears after the user spends time in it, and frequently used apps can appear first. Users can opt an app into streak rewards or exclude it from the activity view. Award XP once per eligible app and local calendar day, using the same per-app streak rules and shared pet level. The Windows collector can identify desktop apps by executable. Website-level entries depend on active-tab session data.
+
+### Website activity and per-app XP implemented
+
+- Start Flask with `python -m flask --app app run` and Vite with `npm run dev`. In the planner, open **Activity** and choose **Start tracking**. Flask's `POST /api/activity/capture` returns ten-second foreground samples on the local Windows PC. **Stop tracking** lets the current sample finish. Tracking continues between planner screens and stops requesting samples when the tab closes.
+- `src/features/activity/` aggregates samples by app and local calendar day. The list is sorted by foreground time over the last seven days. Per-app rewards are opt-in. Apps marked hidden stop adding tracked time or earning XP until shown again. Enabling rewards can credit the current day if it already qualifies.
+- The first ten active minutes in an enabled app on a calendar day earn 10 XP, plus 5 XP on qualifying consecutive days from day three. Each app/day has a saved award entry and contributes to the same pet level as task and play XP. Browser storage holds daily totals, preferences, the award history, and pet XP together. The Flask route returns raw session intervals and does not store them in SQLite.
+- The endpoint is loopback-only. A hosted website or standalone static build needs a local companion connection before it can capture activity. Website timing needs browser active-tab sessions. If database integration proceeds, keep `(user, app, local day)` unique for reward records.
+- Verified a live Windows sample through the Vite proxy. Chrome checks with a controlled capture verified app discovery, Start/Stop, opt-in, level-up, hide/show, persistence after reload, and the narrow layout. `node --test`, the Flask test suite, and the planner build passed.
+
+### Automatic tracking and two-second updates
+
+The planner now starts Windows foreground tracking by default when it opens. Choosing **Stop tracking** lets the current sample finish and saves a browser preference, so a reload stays paused until the user starts tracking again. Flask returns two-second sample windows with the same 250 ms foreground sampling interval. The standalone `test.py` demo still uses its ten-second capture.
+
+Verified in Chrome against the live Windows endpoint. Consecutive capture updates were 2.002 seconds apart, and stopping persisted across reload until tracking was resumed manually.
+
+### Open tabs and app ranking
+
+The Activity list ranks apps by today's foreground time, then by the last seven days, then by name. While tracking is on and Activity is visible, `POST /api/activity/tabs` uses Windows UI Automation to refresh open tab titles grouped by app window. This snapshot refreshes separately from the two-second usage capture, with 15 seconds between scans. Open tab titles stay in memory and do not affect app XP or track time spent on individual tabs. Desktop apps only show tabs that they expose to Windows accessibility.
+
+Verified the live Windows tab endpoint and checked ranking and two window groups in Chrome. The Flask tests, Node tests, and frontend build passed.
+
+### Friends and multiplayer focus parties
+
+- The planner's **Friends** tab creates a browser companion profile through the existing API. It shows the user's friend code and friend list. Friends can join a party using a separate invite code.
+- `backend/parties.py` adds authenticated create, join, current party, ready, start, reset, and leave operations under `/api/parties`. SQLite stores party membership and the shared deadline. At least two players must join and all must be ready. The host starts the 25-minute focus session. If the host leaves, the first remaining member becomes host.
+- The browser refreshes party state every three seconds while viewing Friends. Party membership stays joined until the user leaves. Each participant needs a distinct profile on the same Flask server. Party state does not share private task or activity records.
+- Verified the full two-player flow in separate Chrome profiles, including adding a friend, joining by code, readying up, starting and ending the shared countdown, transferring the host, and leaving. Flask and Node tests and the frontend build passed.
