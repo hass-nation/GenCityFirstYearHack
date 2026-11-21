@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Settings - PC Pet{% endblock %}
+{% block content %}
+<div class="page-heading"><p class="eyebrow">YOUR PREFERENCES</p><h1>Settings</h1><p class="muted">Choose how you would like PC Pet to behave.</p></div>
+<section class="card settings-card">
+  <p class="eyebrow">REMINDERS</p><h2>Daily reminders</h2>
+  <p class="muted reminder-notice">This saves your preference only. PC Pet does not send reminders yet.</p>
+  <form method="post" class="form-stack settings-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="toggle-row"><span><strong>Enable daily reminders</strong><small>Your choice is saved to your account.</small></span><input type="checkbox" name="daily_reminders" {% if preferences['daily_reminders'] %}checked{% endif %}></label>
+    <button class="primary-button" type="submit">Save settings</button>
+  </form>
+</section>
+{% endblock %}

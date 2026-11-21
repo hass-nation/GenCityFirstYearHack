@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Delete account · PC Pet{% endblock %}
+{% block title %}Delete account - PC Pet{% endblock %}
 {% block content %}
 <section class="card delete-card">
   <p class="eyebrow danger-text">ACCOUNT REMOVAL</p><h1>Delete your account?</h1>
@@ -7,7 +7,7 @@
   <form method="post" class="form-stack">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Type <strong>DELETE</strong> to confirm<input name="confirmation" autocomplete="off" required></label>
-    <div class="button-row"><a class="secondary-button" href="{{ url_for('account') }}">Keep my account</a><button class="danger-button" type="submit">Delete permanently</button></div>
+    <div class="button-row"><a class="secondary-button" href="{{ url_for('data') }}">Keep my account</a><button class="danger-button" type="submit">Delete permanently</button></div>
   </form>
 </section>
 {% endblock %}

@@ -8,8 +8,13 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="{{ url_for('home') }}"><span class="brand-mark">✦</span> pc pet</a>
+    <a class="brand" href="{{ url_for('home') }}"><span class="brand-mark">*</span> pc pet</a>
     {% if g.user %}
+    <nav class="account-nav" aria-label="Account navigation">
+      {% for endpoint, label, route in account_navigation %}
+      <a href="{{ url_for(route) }}"{% if request.endpoint == endpoint or (endpoint == 'data' and request.endpoint in ('export_data', 'delete_account')) %} aria-current="page" class="active"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
     <form action="{{ url_for('logout') }}" method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="quiet-button" type="submit">Sign out</button>
@@ -22,6 +27,6 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
-  <footer>PC Pet · your little study companion</footer>
+  <footer>PC Pet - your little study companion - <a href="{{ url_for('privacy') }}">Privacy</a></footer>
 </body>
 </html>

@@ -2,10 +2,12 @@
 
 import os
 import sqlite3
+import secrets
 from datetime import timedelta
 from pathlib import Path
 
 from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from account_store import close_db, get_db, init_db
 
@@ -25,16 +27,19 @@ def create_app(test_config=None):
 
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
     app.teardown_appcontext(close_db)
-
     with app.app_context():
         init_db()
 
     @app.before_request
     def load_user_and_check_csrf():
         user_id = session.get("user_id")
-        g.user = get_db().execute(
-            "SELECT id, email, display_name, created_at FROM users WHERE id = ?", (user_id,)
-        ).fetchone() if user_id else None
+        g.user = (
+            get_db().execute(
+                "SELECT id, email, display_name, created_at FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            if user_id
+            else None
+        )
         if request.method == "POST":
             submitted = request.form.get("csrf_token", "")
             if not submitted or submitted != session.get("csrf_token"):
@@ -43,13 +48,22 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_csrf_token():
         def csrf_token():
-            import secrets
-
             if "csrf_token" not in session:
                 session["csrf_token"] = secrets.token_urlsafe(32)
             return session["csrf_token"]
 
         return {"csrf_token": csrf_token}
+
+    @app.context_processor
+    def inject_account_navigation():
+        return {
+            "account_navigation": (
+                ("account", "Account", "account"),
+                ("settings", "Settings", "settings"),
+                ("data", "Data", "data"),
+                ("privacy", "Privacy", "privacy"),
+            )
+        }
 
     @app.get("/")
     def home():
@@ -72,8 +86,6 @@ def create_app(test_config=None):
                 error = "Use a password with at least 8 characters."
 
             if error is None:
-                from werkzeug.security import generate_password_hash
-
                 db = get_db()
                 try:
                     cur = db.execute(
@@ -97,8 +109,6 @@ def create_app(test_config=None):
         if g.user:
             return redirect(url_for("account"))
         if request.method == "POST":
-            from werkzeug.security import check_password_hash
-
             email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
             user = get_db().execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
@@ -122,12 +132,12 @@ def create_app(test_config=None):
     def account():
         if not g.user:
             return redirect(url_for("login"))
-        db = get_db()
-        settings = db.execute("SELECT * FROM user_settings WHERE user_id = ?", (g.user["id"],)).fetchone()
         if request.method == "POST":
+            if "current_password" in request.form:
+                return change_password()
+
             display_name = request.form.get("display_name", "").strip()
             email = request.form.get("email", "").strip().lower()
-            reminders = 1 if request.form.get("daily_reminders") == "on" else 0
             error = None
             if not display_name or len(display_name) > 60:
                 error = "Enter a name between 1 and 60 characters."
@@ -136,31 +146,114 @@ def create_app(test_config=None):
             if error:
                 flash(error, "error")
             else:
+                db = get_db()
                 try:
-                    db.execute("UPDATE users SET display_name = ?, email = ? WHERE id = ?",
-                               (display_name, email, g.user["id"]))
-                    db.execute("UPDATE user_settings SET daily_reminders = ? WHERE user_id = ?",
-                               (reminders, g.user["id"]))
+                    db.execute(
+                        "UPDATE users SET display_name = ?, email = ? WHERE id = ?",
+                        (display_name, email, g.user["id"]),
+                    )
                     db.commit()
                 except sqlite3.IntegrityError:
                     db.rollback()
                     flash("That email is already used by another account.", "error")
                 else:
-                    flash("Your profile and settings have been saved.", "success")
+                    flash("Your account details have been saved.", "success")
                     return redirect(url_for("account"))
-            settings = {"daily_reminders": reminders}
-        return render_template("account.html", user=g.user, settings=settings)
+        user = get_db().execute(
+            "SELECT id, email, display_name, created_at FROM users WHERE id = ?", (g.user["id"],)
+        ).fetchone()
+        return render_template("account.html", user=user)
+
+    def change_password():
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirmation = request.form.get("confirm_password", "")
+        stored = get_db().execute(
+            "SELECT password_hash FROM users WHERE id = ?", (g.user["id"],)
+        ).fetchone()
+
+        if not check_password_hash(stored["password_hash"], current_password):
+            flash("Your current password is incorrect.", "error")
+        elif len(new_password) < 8:
+            flash("Use a new password with at least 8 characters.", "error")
+        elif new_password != confirmation:
+            flash("The new password and confirmation do not match.", "error")
+        elif check_password_hash(stored["password_hash"], new_password):
+            flash("Choose a new password that differs from your current password.", "error")
+        else:
+            get_db().execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?",
+                (generate_password_hash(new_password), g.user["id"]),
+            )
+            get_db().commit()
+            flash("Your password has been changed.", "success")
+        return redirect(url_for("account"))
+
+    @app.route("/settings", methods=("GET", "POST"))
+    def settings():
+        if not g.user:
+            return redirect(url_for("login"))
+        db = get_db()
+        if request.method == "POST":
+            reminders = 1 if request.form.get("daily_reminders") == "on" else 0
+            db.execute(
+                "UPDATE user_settings SET daily_reminders = ? WHERE user_id = ?",
+                (reminders, g.user["id"]),
+            )
+            db.commit()
+            flash("Your reminder preference has been saved. Reminders are not sent yet.", "success")
+            return redirect(url_for("settings"))
+        preferences = db.execute(
+            "SELECT user_id, daily_reminders FROM user_settings WHERE user_id = ?", (g.user["id"],)
+        ).fetchone()
+        return render_template("settings.html", preferences=preferences)
+
+    @app.get("/data")
+    def data():
+        if not g.user:
+            return redirect(url_for("login"))
+        account_record = get_db().execute(
+            "SELECT id, email, display_name, created_at FROM users WHERE id = ?", (g.user["id"],)
+        ).fetchone()
+        settings_record = get_db().execute(
+            "SELECT user_id, daily_reminders FROM user_settings WHERE user_id = ?", (g.user["id"],)
+        ).fetchone()
+        account_data = {
+            "account_id": account_record["id"],
+            "email": account_record["email"],
+            "display_name": account_record["display_name"],
+            "created_at": account_record["created_at"],
+            "settings_user_id": settings_record["user_id"],
+            "daily_reminders": bool(settings_record["daily_reminders"]),
+        }
+        return render_template("data.html", account_data=account_data)
+
+    @app.get("/privacy")
+    def privacy():
+        return render_template("privacy.html")
 
     @app.get("/account/export")
     def export_data():
         if not g.user:
             return redirect(url_for("login"))
-        settings = get_db().execute("SELECT daily_reminders FROM user_settings WHERE user_id = ?",
-                                    (g.user["id"],)).fetchone()
+        db = get_db()
+        account_record = db.execute(
+            "SELECT id, email, display_name, created_at FROM users WHERE id = ?", (g.user["id"],)
+        ).fetchone()
+        settings_record = db.execute(
+            "SELECT user_id, daily_reminders FROM user_settings WHERE user_id = ?", (g.user["id"],)
+        ).fetchone()
         response = jsonify({
-            "profile": {"email": g.user["email"], "display_name": g.user["display_name"],
-                        "created_at": g.user["created_at"]},
-            "settings": {"daily_reminders": bool(settings["daily_reminders"])},
+            "account": {
+                "id": account_record["id"],
+                "email": account_record["email"],
+                "display_name": account_record["display_name"],
+                "created_at": account_record["created_at"],
+            },
+            "settings": {
+                "user_id": settings_record["user_id"],
+                "daily_reminders": bool(settings_record["daily_reminders"]),
+            },
         })
         response.headers["Content-Disposition"] = "attachment; filename=pc-pet-account-data.json"
         return response
@@ -176,7 +269,7 @@ def create_app(test_config=None):
                 get_db().execute("DELETE FROM users WHERE id = ?", (g.user["id"],))
                 get_db().commit()
                 session.clear()
-                flash("Your account and saved account settings have been deleted.", "success")
+                flash("Your account and its settings have been deleted.", "success")
                 return redirect(url_for("login"))
         return render_template("delete_account.html")
 

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Your data - PC Pet{% endblock %}
+{% block content %}
+<div class="page-heading"><p class="eyebrow">YOUR INFORMATION</p><h1>Data management</h1><p class="muted">Review the account details currently saved for you.</p></div>
+<section class="card data-card">
+  <p class="eyebrow">ACCOUNT DATA</p><h2>Stored fields</h2>
+  <dl class="data-list">
+    <div><dt>Account ID</dt><dd>{{ account_data['account_id'] }}</dd></div>
+    <div><dt>Email</dt><dd>{{ account_data['email'] }}</dd></div>
+    <div><dt>Display name</dt><dd>{{ account_data['display_name'] }}</dd></div>
+    <div><dt>Account created</dt><dd>{{ account_data['created_at'] }}</dd></div>
+    <div><dt>Settings account ID</dt><dd>{{ account_data['settings_user_id'] }}</dd></div>
+    <div><dt>Daily reminders preference</dt><dd>{{ 'Enabled' if account_data['daily_reminders'] else 'Disabled' }}</dd></div>
+  </dl>
+  <p class="hint">Password credentials are never displayed or included in your download.</p>
+</section>
+<section class="card privacy-card data-actions">
+  <div><p class="eyebrow">YOUR CONTROLS</p><h2>Take your data with you</h2><p class="muted">The export contains the account fields shown here, excluding password credentials.</p></div>
+  <div class="privacy-actions"><a class="secondary-button" href="{{ url_for('export_data') }}">Download JSON</a><a class="danger-link" href="{{ url_for('delete_account') }}">Delete account</a></div>
+</section>
+{% endblock %}

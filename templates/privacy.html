@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Privacy - PC Pet{% endblock %}
+{% block content %}
+<div class="page-heading"><p class="eyebrow">PLAIN ENGLISH</p><h1>Privacy</h1><p class="muted">What PC Pet saves and the choices you have.</p></div>
+<section class="card privacy-copy">
+  <h2>What we collect</h2>
+  <p>For an account, PC Pet stores your email address, display name, account creation time, a one-way password hash, and your daily-reminders preference. Signing in also uses a session cookie in your browser.</p>
+
+  <h2>Why we use it</h2>
+  <p>Your email and password hash let you sign in. Your display name appears in your account. The creation time records when the account was made. The reminders setting saves your choice, but reminders are not sent yet.</p>
+
+  <h2>Where it is stored</h2>
+  <p>Account records are stored in the app's SQLite database, in its private instance folder. For the local app, that is on the machine running Flask. The session cookie is stored by your browser. The app does not display or export your password hash. The page also requests fonts from Google Fonts, which receives a browser request when those fonts load.</p>
+
+  <h2>How long it is kept</h2>
+  <p>Your account information stays in the database until you delete your account or the database is removed by the person operating the app. There is no automatic deletion schedule yet.</p>
+
+  <h2>Your controls</h2>
+  <p>You can edit your name and email, change your password, update your reminder preference, download the account data currently stored, or delete your account.</p>
+  {% if g.user %}<a class="secondary-button" href="{{ url_for('data') }}">Manage my data</a>{% else %}<a class="secondary-button" href="{{ url_for('signup') }}">Create an account</a>{% endif %}
+</section>
+{% endblock %}
