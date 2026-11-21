@@ -26,6 +26,10 @@ A student planner with a customisable virtual dog that floats above your Mac app
 
 ## Run the demo on macOS
 
+## GitHub Pages deployment
+
+The static planner deploys to `https://hass-nation.github.io/GenCityFirstYearHack/` whenever a commit is pushed to `main`. The GitHub Pages deployment workflow builds the Vite app and publishes `dist`. In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**. Pages hosts only the frontend; Flask-backed profile and friend messaging features still require a separately hosted API.
+
 From the project root, build the dashboard and install the Flask requirements:
 
 ```sh
