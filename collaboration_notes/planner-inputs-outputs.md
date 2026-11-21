@@ -1,12 +1,12 @@
 # FI planner collaboration notes
 
-Use this handoff when working on Tasks, Task List, Reminders, Smart Reminders, Streaks, or the Home dashboard. The frontend is React and TypeScript with Vite. Flask serves the built frontend and provides the `/api` namespace.
+Use this handoff when working on Tasks, Task List, Reminders, Smart Reminders, Streaks, the Home dashboard, or Windows app tracking. The frontend is React and TypeScript with Vite. Flask serves the built frontend and provides the `/api` namespace.
 
 ## Ownership and handoffs
 
 | Owner | Work area | Coordinate when |
 | --- | --- | --- |
-| **FI** | `src/features/tasks/` and the planner portion of Home | A feature needs changes to shared state, navigation, task types, or Flask routes. |
+| **FI** | `src/features/tasks/`, the planner portion of Home, and the Python collector for Windows app activity | A feature needs changes to shared state, navigation, task types, Flask routes, or activity data. |
 | **HE** | Accounts, settings, privacy, and data management | Adding stored task fields such as due dates or completion timestamps, or changing what data export and deletion need to cover. |
 | **TT** | Pet, XP display, and pet interactions | Changing completion rewards, the level calculation, or the pet data shown on the dashboard. |
 
@@ -23,6 +23,17 @@ Keep planner logic in `src/features/tasks/`. Coordinate edits to `src/App.tsx`, 
 - Run `npm run demo:planner` for changes to the planner modules and `npm run build` for frontend changes.
 - For changes to task state or pet rewards, add and complete a task, check the dashboard and XP, then reload to check persistence.
 - In the handoff, name the files changed, call out any shared contract changes, and record what you verified.
+
+## Windows activity tracking
+
+FI owns the Python collector and how its results feed Smart Reminders. The collector needs to run on the user's Windows PC. If Flask runs on that PC, it can call the collector locally. With a hosted Flask server, the collector needs to run as a separate local companion.
+
+| Python file | Inputs | Outputs and responsibility |
+| --- | --- | --- |
+| `backend/windows_activity.py` (planned) | A request to scan the current Windows desktop | Enumerates desktop windows and returns distinct app names. Start with a user-triggered snapshot. |
+| [backend/api.py](../backend/api.py) | A proposed `GET /api/activity/apps` request from the local planner | Calls the collector and returns JSON such as `{"apps":["Code","chrome"]}`. Agree on how to report unavailable collection before wiring the frontend. |
+
+Browser tabs need a browser extension. The Python snapshot can identify Chrome or Edge as an open app, while the extension supplies tab domains if Smart Reminders needs them. Coordinate with HE before persisting or exporting activity and with TT if the pet displays the resulting prompts.
 
 ## Shared data
 
