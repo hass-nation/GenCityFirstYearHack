@@ -1,6 +1,6 @@
 # GenCity floating pet for macOS
 
-The AppKit helper opens Biscuit as a draggable floating panel above other apps. The panel stays visible across macOS Spaces and has a compact chat window. The companion can create a profile, share a friend code, add another profile, and send messages through the Flask API.
+The AppKit helper opens Wobbles as a draggable floating panel above other apps. The panel walks across the screen when collapsed, stays visible across macOS Spaces, and includes a compact chat window. Use its walk button to pause or resume. The companion can create a profile, share a friend code, add another profile, and send messages through the Flask API.
 
 ## Run the local demo
 
@@ -20,7 +20,7 @@ sh desktop/PetOverlay/package_app.sh
 open desktop/PetOverlay/.build/GenCityPetOverlay.app
 ```
 
-On first launch, enter a display name and leave the server URL as `http://127.0.0.1:5000`. Share the friend code shown in the overlay, then add the other profile's code under **Friends**. Keep the recipient's overlay running to receive a message bubble.
+Open the local planner at `http://127.0.0.1:5000` and choose a built-in or custom companion in **Pet room**. The overlay follows the local selection and shows the pet's replies. To use Friends, enter a display name in the overlay and leave the server URL as `http://127.0.0.1:5000`. Share the friend code shown in the overlay, then add the other profile's code under **Friends**. Keep the recipient's overlay running to receive a message bubble.
 
 ## Use it across devices
 

@@ -75,7 +75,7 @@ def _assistant_text(payload):
 def ask_pet(user_text, pet, next_task, streak, history):
     """Return a reply and source given history as (role, text) pairs."""
     next_task = next_task or {}
-    name = _text(pet.get("name"), 32) or "Biscuit"
+    name = _text(pet.get("name"), 32) or "Wobbles"
     mood = _text(pet.get("mood"), 24) or "unknown"
     title = _text(next_task.get("title"), 120)
     due = _text(next_task.get("dueAt"), 32)

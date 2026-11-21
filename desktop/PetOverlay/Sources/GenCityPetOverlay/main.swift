@@ -56,8 +56,17 @@ final class PetOverlayController: NSObject {
     let view = NSView()
     private weak var panel: NSPanel?
     private let root = NSStackView()
-    private let bubble = NSTextField(labelWithString: "Hi! I'm Biscuit 🐶 Want to chat?")
-    private let dog = NSTextField(labelWithString: "🐶")
+    private let bubble = NSTextField(wrappingLabelWithString: "Hi! I'm Wobbles. Want to chat?")
+    private let sprite = NSImageView()
+    private var spriteFrames: [NSImage] = []
+    private var walkerTimer: Timer?
+    private var walkEnabled = true
+    private var direction: CGFloat = -1
+    private var tickCount = 0
+    private var desktopName: String?
+    private var lastAppearance: [String: Any]?
+    private var lastSpeechID: String?
+    private var syncingDesktop = false
     private let status = NSTextField(labelWithString: "")
     private let chatBody = NSTextView()
     private let profileForm = NSStackView()
@@ -77,13 +86,17 @@ final class PetOverlayController: NSObject {
     private var chatOpen = false
     private var friendsMode = false
     private var friends: [[String: Any]] = []
-    private var localHistory = ["Biscuit: Hi! I'm here if you want to chat. 🐾"]
+    private var localHistory = ["Wobbles: Hi! I'm here if you want to chat."]
     private var remoteHistory: [String] = []
 
     init(panel: NSPanel) {
         self.panel = panel
         super.init()
         buildInterface()
+        loadSprite("camel")
+        walkerTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.walkTick() }
+        }
     }
 
     func restoreProfile() {
@@ -128,14 +141,16 @@ final class PetOverlayController: NSObject {
         dogRow.orientation = .horizontal
         dogRow.alignment = .centerY
         dogRow.spacing = 9
-        dog.font = .systemFont(ofSize: 66)
-        dog.alignment = .center
-        dog.wantsLayer = true
-        dog.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.97).cgColor
-        dog.layer?.cornerRadius = 46
-        dogRow.addArrangedSubview(dog)
+        sprite.imageScaling = .scaleProportionallyUpOrDown
+        sprite.wantsLayer = true
+        sprite.layer?.magnificationFilter = .nearest
+        sprite.layer?.cornerRadius = 14
+        sprite.widthAnchor.constraint(equalToConstant: 92).isActive = true
+        sprite.heightAnchor.constraint(equalToConstant: 72).isActive = true
+        dogRow.addArrangedSubview(sprite)
         dogRow.addArrangedSubview(button("Chat", #selector(showPetChat)))
         dogRow.addArrangedSubview(button("Friends", #selector(showFriends)))
+        dogRow.addArrangedSubview(button("Pause", #selector(toggleWalk(_:))))
         dogRow.addArrangedSubview(button("Quit", #selector(quitApp)))
         root.addArrangedSubview(dogRow)
 
@@ -204,7 +219,7 @@ final class PetOverlayController: NSObject {
         column.addArrangedSubview(nameRow)
         let avatarRow = NSStackView()
         avatarRow.spacing = 3
-        for (title, selector) in [("🐶", #selector(chooseDog)), ("🐱", #selector(chooseCat)), ("🐸", #selector(chooseFrog)), ("🦊", #selector(chooseFox)), ("🐼", #selector(choosePanda))] {
+        for (title, selector) in [("Camel", #selector(chooseCamel)), ("Cat", #selector(chooseCat)), ("Dog", #selector(chooseDog))] {
             avatarRow.addArrangedSubview(button(title, selector))
         }
         column.addArrangedSubview(avatarRow)
@@ -283,24 +298,78 @@ final class PetOverlayController: NSObject {
     }
 
     private func refreshHeader() {
-        let name = profile?["pet_name"] as? String ?? UserDefaults.standard.string(forKey: "gencity.pet_name") ?? "Biscuit"
-        let avatar = profile?["pet_avatar"] as? String ?? UserDefaults.standard.string(forKey: "gencity.pet_avatar") ?? "🐶"
+        let name = profile?["pet_name"] as? String ?? UserDefaults.standard.string(forKey: "gencity.pet_name") ?? "Wobbles"
+        let avatar = profile?["pet_avatar"] as? String ?? UserDefaults.standard.string(forKey: "gencity.pet_avatar") ?? "camel"
         let theme = profile?["pet_theme"] as? String ?? UserDefaults.standard.string(forKey: "gencity.pet_theme") ?? "lavender"
-        dog.stringValue = avatar
         switch theme {
-        case "meadow": dog.layer?.backgroundColor = NSColor(calibratedRed: 0.77, green: 0.91, blue: 0.79, alpha: 1).cgColor
-        case "sunset": dog.layer?.backgroundColor = NSColor(calibratedRed: 1, green: 0.82, blue: 0.67, alpha: 1).cgColor
-        default: dog.layer?.backgroundColor = NSColor(calibratedRed: 0.88, green: 0.84, blue: 1, alpha: 1).cgColor
+        case "meadow": sprite.layer?.backgroundColor = NSColor(calibratedRed: 0.77, green: 0.91, blue: 0.79, alpha: 1).cgColor
+        case "sunset": sprite.layer?.backgroundColor = NSColor(calibratedRed: 1, green: 0.85, blue: 0.80, alpha: 1).cgColor
+        default: sprite.layer?.backgroundColor = NSColor(calibratedRed: 0.92, green: 0.96, blue: 1, alpha: 1).cgColor
         }
-        bubble.stringValue = "Hi! I'm \(name) 🐶 Want to chat?"
+        loadSprite(avatar)
+        bubble.stringValue = "Hi! I'm \(name). Want to chat?"
         if let code = profile?["friend_code"] as? String { friendCodeLabel?.stringValue = "Your friend code: \(code)" }
         if petNameField.stringValue.isEmpty { petNameField.stringValue = name }
     }
 
-    private func request(_ path: String, method: String = "GET", body: [String: String]? = nil, authenticated: Bool = true, completion: @escaping @MainActor @Sendable ([String: Any]?, String?) -> Void) {
-        let base = serverURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    private func loadSprite(_ selection: String, custom: [String] = []) {
+        if selection == "custom", custom.count == 2 {
+            let images = custom.compactMap { frame -> NSImage? in
+                guard let payload = frame.split(separator: ",", maxSplits: 1).last,
+                      let data = Data(base64Encoded: String(payload)) else { return nil }
+                return NSImage(data: data)
+            }
+            if images.count == 2 { spriteFrames = images; return }
+        }
+        let species = ["cat", "🐱"].contains(selection) ? "cat" : ["dog", "🐶"].contains(selection) ? "dog" : "camel"
+        spriteFrames = (1...2).compactMap { index in
+            guard let url = Bundle.main.url(forResource: "\(species)-\(index)", withExtension: "png", subdirectory: "pets") else { return nil }
+            return NSImage(contentsOf: url)
+        }
+    }
+
+    private func walkTick() {
+        tickCount = (tickCount + 1) % 120
+        if !spriteFrames.isEmpty {
+            sprite.image = spriteFrames[(tickCount / 6) % spriteFrames.count]
+        }
+        if let panel, let frame = panel.screen?.visibleFrame,
+           walkEnabled && !chatOpen && NSEvent.pressedMouseButtons == 0 {
+            let left = frame.minX, right = max(left, frame.maxX - panel.frame.width)
+            let x = min(right, max(left, panel.frame.origin.x + direction * 2))
+            if x == left { direction = 1 }
+            if x == right { direction = -1 }
+            sprite.layer?.setAffineTransform(CGAffineTransform(scaleX: direction > 0 ? -1 : 1, y: 1))
+            panel.setFrameOrigin(NSPoint(x: x, y: panel.frame.origin.y))
+        }
+        if tickCount % 16 == 0 { readDesktopPet() }
+    }
+
+    private func readDesktopPet() {
+        guard !syncingDesktop else { return }
+        syncingDesktop = true
+        request("/api/desktop-pet", authenticated: false, baseURL: "http://127.0.0.1:5000") { [weak self] result, _ in
+            guard let self else { return }
+            self.syncingDesktop = false
+            if let appearance = result?["appearance"] as? [String: Any],
+               self.lastAppearance.map({ NSDictionary(dictionary: $0) != NSDictionary(dictionary: appearance) }) ?? true {
+                self.lastAppearance = appearance
+                self.desktopName = appearance["name"] as? String
+                self.loadSprite(appearance["species"] as? String ?? "camel", custom: appearance["frames"] as? [String] ?? [])
+            }
+            if let speech = result?["speech"] as? [String: Any], let id = speech["id"] as? String,
+               self.lastSpeechID != id, let text = speech["text"] as? String {
+                self.lastSpeechID = id
+                self.bubble.stringValue = text
+            }
+        }
+    }
+
+    private func request(_ path: String, method: String = "GET", body: [String: String]? = nil, authenticated: Bool = true, baseURL: String? = nil, completion: @escaping @MainActor @Sendable ([String: Any]?, String?) -> Void) {
+        let base = (baseURL ?? serverURL).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard let url = URL(string: base + path) else { completion(nil, "Invalid server URL"); return }
         var request = URLRequest(url: url)
+        if baseURL != nil { request.timeoutInterval = 2 }
         request.httpMethod = method
         if authenticated && !token.isEmpty { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let body {
@@ -358,8 +427,7 @@ final class PetOverlayController: NSObject {
             self.friendPicker.removeAllItems()
             for person in list {
                 let name = person["display_name"] as? String ?? "Friend"
-                let pet = person["pet_avatar"] as? String ?? "🐶"
-                let item = self.friendPicker.menu?.addItem(withTitle: "\(pet) \(name)", action: nil, keyEquivalent: "")
+                let item = self.friendPicker.menu?.addItem(withTitle: name, action: nil, keyEquivalent: "")
                 item?.representedObject = person["friend_code"] as? String
             }
             if list.isEmpty { self.friendPicker.addItem(withTitle: "Add a friend first") }
@@ -386,9 +454,8 @@ final class PetOverlayController: NSObject {
                 let id = row["id"] as? Int ?? 0
                 self.lastMessageId = max(self.lastMessageId, id)
                 let petName = row["sender_pet_name"] as? String ?? row["sender_name"] as? String ?? "Friend"
-                let avatar = row["sender_pet_avatar"] as? String ?? "🐶"
                 let text = row["body"] as? String ?? ""
-                let bubbleText = "\(avatar) \(petName): \(text)"
+                let bubbleText = "\(petName): \(text)"
                 self.remoteHistory.append(bubbleText)
                 self.bubble.stringValue = bubbleText
                 self.status.stringValue = "New message from \(petName)."
@@ -438,7 +505,7 @@ final class PetOverlayController: NSObject {
         else if lower.contains("sad") || lower.contains("stress") { answer = "I'm here for you. Want to tell me a bit more? 💛" }
         else if lower.contains("play") || lower.contains("walk") { answer = "Did someone say play? I'm ready! 🐕" }
         else { answer = "Thanks for telling me. I'm listening! 🐶" }
-        let petName = profile?["pet_name"] as? String ?? UserDefaults.standard.string(forKey: "gencity.pet_name") ?? "Biscuit"
+        let petName = desktopName ?? profile?["pet_name"] as? String ?? UserDefaults.standard.string(forKey: "gencity.pet_name") ?? "Wobbles"
         localHistory.append("\(petName): \(answer)")
         chatBody.string = localHistory.suffix(24).joined(separator: "\n\n")
         bubble.stringValue = answer
@@ -466,11 +533,13 @@ final class PetOverlayController: NSObject {
     }
 
     @objc private func savePetName() { updatePet(["pet_name": petNameField.stringValue]) }
-    @objc private func chooseDog() { updatePet(["pet_avatar": "🐶"]) }
-    @objc private func chooseCat() { updatePet(["pet_avatar": "🐱"]) }
-    @objc private func chooseFrog() { updatePet(["pet_avatar": "🐸"]) }
-    @objc private func chooseFox() { updatePet(["pet_avatar": "🦊"]) }
-    @objc private func choosePanda() { updatePet(["pet_avatar": "🐼"]) }
+    @objc private func chooseDog() { updatePet(["pet_avatar": "dog"]) }
+    @objc private func chooseCat() { updatePet(["pet_avatar": "cat"]) }
+    @objc private func chooseCamel() { updatePet(["pet_avatar": "camel"]) }
+    @objc private func toggleWalk(_ sender: NSButton) {
+        walkEnabled.toggle()
+        sender.title = walkEnabled ? "Pause" : "Walk"
+    }
     @objc private func themeLavender() { updatePet(["pet_theme": "lavender"]) }
     @objc private func themeMeadow() { updatePet(["pet_theme": "meadow"]) }
     @objc private func themeSunset() { updatePet(["pet_theme": "sunset"]) }

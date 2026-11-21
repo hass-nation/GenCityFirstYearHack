@@ -31,8 +31,8 @@ def database() -> sqlite3.Connection:
                 display_name TEXT NOT NULL,
                 friend_code TEXT NOT NULL UNIQUE,
                 token_hash TEXT NOT NULL UNIQUE,
-                pet_name TEXT NOT NULL DEFAULT 'Biscuit',
-                pet_avatar TEXT NOT NULL DEFAULT '🐶',
+                pet_name TEXT NOT NULL DEFAULT 'Wobbles',
+                pet_avatar TEXT NOT NULL DEFAULT 'camel',
                 pet_theme TEXT NOT NULL DEFAULT 'lavender',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -141,7 +141,7 @@ def create_user():
     token = secrets.token_urlsafe(32)
     friend_code = new_friend_code(connection)
     connection.execute(
-        "INSERT INTO users (id, display_name, friend_code, token_hash) VALUES (?, ?, ?, ?)",
+        "INSERT INTO users (id, display_name, friend_code, token_hash, pet_name, pet_avatar) VALUES (?, ?, ?, ?, 'Wobbles', 'camel')",
         (user_id, display_name, friend_code, token_digest(token)),
     )
     connection.commit()

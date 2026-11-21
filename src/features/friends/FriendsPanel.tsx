@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { formatScreenTime } from "../tasks/dashboardStats";
+import PetSprite from "../pet/PetSprite";
+import { speciesFor } from "../pet/appearance";
 import { friendsTokenKey as tokenKey, sharingKey, type ScreenTime } from "./screenTimeSharing";
 
 type Profile = { id: string; display_name: string; friend_code: string; pet_name: string; pet_avatar: string; share_screen_time?: boolean; screen_time?: ScreenTime };
@@ -174,7 +176,7 @@ export default function FriendsPanel({ screenTime }: { screenTime: ScreenTime })
                   : <p className="party-timer">{focusing ? <>Focus time left <strong>{formatCountdown(remaining)}</strong></> : "Focus session complete"}</p>}
                 <ul className="friends-list" aria-label="Party members">
                   {party.members.map((member) => <li key={member.id}>
-                    <span><span aria-hidden="true">{member.pet_avatar} </span>{member.display_name}{member.id === profile.id ? " (you)" : ""}{member.id === party.host_id ? " · Host" : ""}</span>
+                    <span><PetSprite className="friend-sprite" species={speciesFor(member.pet_avatar)} still />{member.display_name}{member.id === profile.id ? " (you)" : ""}{member.id === party.host_id ? " · Host" : ""}</span>
                     <span>{party.status === "lobby" ? member.ready ? "Ready" : "Waiting" : focusing ? "In session" : "Finished"}</span>
                   </li>)}
                 </ul>
@@ -219,7 +221,7 @@ export default function FriendsPanel({ screenTime }: { screenTime: ScreenTime })
               <label>Friend code<input name="friend_code" required minLength={8} maxLength={8} autoComplete="off" /></label>
               <button className="friends-secondary" disabled={busy}>Add friend</button>
             </form>
-            {friends.length > 0 ? <ul className="friends-list" aria-label="Friends list">{friends.map((friend) => <li key={friend.id}><span>{friend.display_name}</span><span><span aria-hidden="true">{friend.pet_avatar} </span>{friend.pet_name}{friend.screen_time && <small className="shared-time">{formatScreenTime(friend.screen_time.seconds)} screen time · {friend.screen_time.day}</small>}</span></li>)}</ul>
+            {friends.length > 0 ? <ul className="friends-list" aria-label="Friends list">{friends.map((friend) => <li key={friend.id}><span>{friend.display_name}</span><span><PetSprite className="friend-sprite" species={speciesFor(friend.pet_avatar)} still />{friend.pet_name}{friend.screen_time && <small className="shared-time">{formatScreenTime(friend.screen_time.seconds)} screen time · {friend.screen_time.day}</small>}</span></li>)}</ul>
               : <p className="muted friends-empty">Friends you add will appear here.</p>}
           </section>
         </>

@@ -18,13 +18,32 @@
     button { background: #b6a2ff; color: #211a36; font-weight: 600; }
     button:disabled { opacity: .65; }
     #typing { min-height: 1.5rem; margin: .4rem 0; color: #d5c9eb; }
+    .speaker { display: grid; justify-items: center; gap: .8rem; padding-bottom: 1rem; }
+    .speaker .bubble { position: relative; background: #eaf6ff; color: #142943; }
+    .speaker .bubble::after { position: absolute; content: ""; left: calc(50% - 6px); bottom: -6px; width: 12px; height: 12px; background: inherit; transform: rotate(45deg); }
+    .speaker-sprite { display: grid; width: 88px; height: 68px; }
+    .speaker-sprite img { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+    .speaker-sprite img:first-child { animation: talk-frame .6s steps(1, end) infinite reverse; }
+    .speaker-sprite img:last-child { animation: talk-frame .6s steps(1, end) infinite; }
+    @keyframes talk-frame { 0% { visibility: hidden; } 50%, 100% { visibility: visible; } }
+    @media (prefers-reduced-motion: reduce) {
+      .speaker-sprite img:first-child { animation: none; }
+      .speaker-sprite img:last-child { animation: none; visibility: hidden; }
+    }
   </style>
   <script src="{{ url_for('static', filename='pet-chat.js') }}" defer></script>
 </head>
 <body>
   <main>
     <a href="{{ url_for('home') }}">Back to planner</a>
-    <h1>Talk to <span id="pet-name">Biscuit</span></h1>
+    <h1>Talk to <span id="pet-name">Wobbles</span></h1>
+    <div class="speaker">
+      <p id="pet-speech" class="bubble" aria-hidden="true"></p>
+      <span class="speaker-sprite" aria-hidden="true">
+        <img src="{{ url_for('pet_sprite', filename='camel-1.png') }}" alt="">
+        <img src="{{ url_for('pet_sprite', filename='camel-2.png') }}" alt="">
+      </span>
+    </div>
     <div id="chat-log" role="log" aria-label="Pet chat"></div>
     <p id="typing" role="status"></p>
     <form id="pet-chat" action="{{ url_for('pet_chat.chat') }}">

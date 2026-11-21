@@ -26,6 +26,19 @@ export function activityDay(date: Date) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+export function dailyScreenTime(activity: ActivityState | undefined, now: Date) {
+  const apps = Object.entries(activity?.apps ?? {})
+    .filter(([id, app]) => !id.startsWith(WEBSITE_PREFIX) && !app.hidden)
+    .map(([, app]) => app);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index - 6, 12);
+    const day = activityDay(date);
+    const milliseconds = apps.reduce((total, app) => total + (app.days[day] ?? 0), 0);
+    return { date, seconds: Math.floor(milliseconds / 1000) };
+  });
+}
+
 function moveDay(day: string, offset: number) {
   const date = new Date(`${day}T12:00:00`);
   date.setDate(date.getDate() + offset);

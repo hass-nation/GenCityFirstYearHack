@@ -8,6 +8,7 @@ from flask import Flask, send_from_directory
 
 from backend.api import api
 from backend.activity_api import activity_api
+from backend.desktop_pet import desktop_pet
 from backend.parties import parties
 from .chat import pet_chat
 
@@ -18,6 +19,7 @@ def create_app(frontend_dir: Path | None = None) -> Flask:
     app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
     app.register_blueprint(api)
     app.register_blueprint(activity_api)
+    app.register_blueprint(desktop_pet)
     app.register_blueprint(parties)
     app.register_blueprint(pet_chat)
     dist = (root / frontend_dir).resolve() if frontend_dir is not None else root / "dist"
@@ -32,6 +34,11 @@ def create_app(frontend_dir: Path | None = None) -> Flask:
     @app.get("/GenCityFirstYearHack/assets/<path:filename>")
     def assets(filename: str):
         return send_from_directory(dist / "assets", filename)
+
+    @app.get("/pets/<path:filename>")
+    @app.get("/GenCityFirstYearHack/pets/<path:filename>")
+    def pet_sprite(filename: str):
+        return send_from_directory(root / "public" / "pets", filename)
 
     return app
 

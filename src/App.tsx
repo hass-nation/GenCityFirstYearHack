@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import AccountPanel from "./features/accounts/AccountPanel";
 import ActivityPanel from "./features/activity/ActivityPanel";
-import { activityDay, recordAppCapture, setAppPreference, type ActivityCapture } from "./features/activity/activity";
+import { activityDay, dailyScreenTime, recordAppCapture, setAppPreference, type ActivityCapture } from "./features/activity/activity";
 import { useActivityCapture } from "./features/activity/useActivityCapture";
 import FriendsPanel from "./features/friends/FriendsPanel";
 import { useScreenTimeSharing } from "./features/friends/screenTimeSharing";
 import PetRoom from "./features/pet/PetRoom";
-import { applyPetAction, toggleTaskProgress, type PlannerProgress } from "./features/pet/progression";
+import PetSprite from "./features/pet/PetSprite";
+import { DEFAULT_PET_NAME, migratePet, type AppearanceChange } from "./features/pet/appearance";
+import { useDesktopAppearance } from "./features/pet/desktopSync";
+import { applyPetAction, toggleTaskProgress, XP_PER_LEVEL, type PlannerProgress } from "./features/pet/progression";
 import TaskBoard from "./features/tasks/TaskBoard";
 import TaskReminder from "./features/tasks/TaskReminder";
 import CalendarPanel from "./features/tasks/CalendarPanel";
@@ -20,13 +23,13 @@ const starterTasks: Task[] = [
 ];
 
 const starterPet: Pet = {
-  name: "Pixel",
+  name: DEFAULT_PET_NAME,
   hunger: 35,
   happiness: 70,
   energy: 80,
   xp: 0,
   level: 1,
-  avatar: "🐶",
+  species: "camel",
   roomTheme: "lavender",
 };
 
@@ -43,18 +46,17 @@ function loadProgress(): PlannerProgress {
   const saved = load<Omit<PlannerProgress, "reward"> | null>("gencity-progress", null);
   const tasks = saved?.tasks ?? load("gencity-tasks", starterTasks);
   const pet = saved?.pet ?? load("gencity-pet", starterPet);
-  // The chick was the original demo default, before companions were selectable.
-  return { tasks, pet: pet.avatar === "🐣" ? { ...pet, avatar: "🐶" } : pet, activity: saved?.activity };
+  return { tasks, pet: migratePet(pet), activity: saved?.activity };
 }
 
-const navItems: { id: Page; label: string; icon: string }[] = [
-  { id: "home", label: "Home", icon: "⌂" },
-  { id: "tasks", label: "Tasks", icon: "▤" },
-  { id: "calendar", label: "Calendar", icon: "▦" },
-  { id: "activity", label: "Activity", icon: "◷" },
-  { id: "pet", label: "Pet room", icon: "♡" },
-  { id: "friends", label: "Friends", icon: "♧" },
-  { id: "account", label: "Profile", icon: "◉" },
+const navItems: { id: Page; label: string }[] = [
+  { id: "home", label: "Dashboard" },
+  { id: "tasks", label: "Tasks" },
+  { id: "calendar", label: "Calendar" },
+  { id: "activity", label: "Activity" },
+  { id: "pet", label: "Pet room" },
+  { id: "friends", label: "Friends" },
+  { id: "account", label: "Profile" },
 ];
 
 export default function App() {
@@ -66,6 +68,7 @@ export default function App() {
     setProgress((current) => recordAppCapture(current, capture, now));
   }, []);
   const tracking = useActivityCapture(onCapture);
+  useDesktopAppearance(pet);
 
   useEffect(() => {
     localStorage.setItem("gencity-progress", JSON.stringify({ tasks, pet, activity }));
@@ -99,7 +102,7 @@ export default function App() {
     setProgress((current) => ({ ...current, pet: { ...current.pet, name } }));
   }
 
-  function customisePet(change: Partial<Pick<Pet, "avatar" | "roomTheme">>) {
+  function customisePet(change: AppearanceChange) {
     setProgress((current) => ({ ...current, pet: { ...current.pet, ...change } }));
   }
 
@@ -113,25 +116,40 @@ export default function App() {
   const stats = dashboardStats(tasks, activity, now);
   const screenTime = { day: activityDay(now), seconds: stats.activeSecondsToday };
   useScreenTimeSharing(screenTime);
+  const week = page === "home" ? dailyScreenTime(activity, now) : [];
+  const chartMaximum = Math.max(1, ...week.map(({ seconds }) => seconds));
+  const nextTasks = tasks.filter((task) => !task.done).slice(0, 3);
+  const levelXp = pet.xp % XP_PER_LEVEL;
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">G</span><span>GENCITY<span className="brand-sub">FIRST YEAR HACK</span></span></div>
+      <header className="app-header">
+        <div className="brand">
+          <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="currentColor">
+            <ellipse cx="8" cy="13" rx="2.5" ry="3.4" transform="rotate(-24 8 13)" />
+            <ellipse cx="13.5" cy="8.5" rx="2.5" ry="3.5" />
+            <ellipse cx="19.5" cy="8.5" rx="2.5" ry="3.5" />
+            <ellipse cx="25" cy="13" rx="2.5" ry="3.4" transform="rotate(24 25 13)" />
+            <path d="M16.5 14c3.4 0 4.3 3.1 7.3 5.9 2.8 2.8 1 6.1-2.2 6.1-2 0-3.2-1.2-5.1-1.2S13.4 26 11.4 26c-3.2 0-5-3.3-2.2-6.1 3-2.8 3.9-5.9 7.3-5.9Z" />
+          </svg>
+          <span>PC Pet</span>
+        </div>
         <nav aria-label="Main navigation">
           {navItems.map((item) => (
-            <button key={item.id} className={page === item.id ? "nav-item active" : "nav-item"} onClick={() => setPage(item.id)}>
-              <span className="nav-icon">{item.icon}</span>{item.label}
+            <button key={item.id} className="nav-item" aria-current={page === item.id ? "page" : undefined} onClick={() => setPage(item.id)}>
+              {item.label}
             </button>
           ))}
         </nav>
-        <div className="sidebar-note"><span className="online-dot" /> Your little corner of campus</div>
-      </aside>
+      </header>
 
       <main className="main-content">
         <header className="topbar">
-          <div><p className="eyebrow">YOUR CAMPUS COMPANION</p><h1>{page === "home" ? "Good day, student." : navItems.find((item) => item.id === page)?.label}</h1></div>
-          <div className="level-chip">LVL {pet.level} <span>✦</span></div>
+          <div>
+            <h1>{navItems.find((item) => item.id === page)?.label}</h1>
+            {page === "home" && <p className="dashboard-date">{now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>}
+          </div>
+          {page === "home" && <button className="primary-button" onClick={() => setPage("tasks")}>Open tasks <span aria-hidden="true">↗</span></button>}
         </header>
 
         <div role="status" aria-atomic="true" className={reward ? "xp-feedback" : undefined}>
@@ -147,21 +165,62 @@ export default function App() {
         </div>
 
         {page === "home" && (
-          <section className="dashboard-grid">
-            <div className="welcome-card">
-              <div><p className="eyebrow">TODAY'S CHECK-IN</p><h2>Small wins count.</h2><p>Finish a task, care for your companion, and keep your day moving.</p><button className="primary-button" onClick={() => setPage("tasks")}>See your tasks <span>↗</span></button></div>
-              <div className="welcome-sparkle" aria-hidden="true">✦</div>
-            </div>
-            <div className="stat-card"><span className="stat-icon">✓</span><span className="stat-label">TASKS DONE</span><strong>{completedCount}<small> / {tasks.length}</small></strong><button className="text-button" onClick={() => setPage("tasks")}>Open task list →</button></div>
-            <div className="pet-preview"><div><p className="eyebrow">YOUR COMPANION</p><h2>{pet.name}</h2><p>Level {pet.level} · {pet.xp} XP</p><button className="text-button" onClick={() => setPage("pet")}>Visit pet room →</button></div><div className="pet-emoji" aria-label={`${pet.name}, your pet`}>{pet.avatar ?? "🐶"}</div></div>
-            <div className="next-card"><p className="eyebrow">A QUICK REMINDER</p><h3>{tasks.find((task) => !task.done)?.title ?? "You're all caught up!"}</h3><button className="text-button" onClick={() => setPage("tasks")}>View today's plan →</button></div>
-            <dl className="dashboard-activity content-card">
+          <div className="dashboard-grid">
+            <dl className="dashboard-metrics content-card">
+              <div><dt>Tasks done</dt><dd>{completedCount}<small> / {tasks.length}</small></dd></div>
               <div><dt>Screen time today</dt><dd>{formatScreenTime(stats.activeSecondsToday)}</dd></div>
-              <div><dt>Total screen time</dt><dd>{formatScreenTime(stats.activeSecondsTotal)}</dd></div>
-              <div><dt>Best current streak</dt><dd>{stats.bestStreak} {stats.bestStreak === 1 ? "day" : "days"}</dd></div>
-              <div><dt>Reminders completed</dt><dd>{stats.remindersCompleted}</dd></div>
+              <div><dt>Best streak</dt><dd>{stats.bestStreak} <small>{stats.bestStreak === 1 ? "day" : "days"}</small></dd></div>
+              <div><dt>Reminders done</dt><dd>{stats.remindersCompleted}</dd></div>
             </dl>
-          </section>
+
+            <section className="dashboard-screen-time content-card">
+              <div className="dashboard-panel-heading">
+                <div><h2>Screen time</h2><p>Last 7 days</p></div>
+                <button className="text-button" onClick={() => setPage("activity")}>View activity <span aria-hidden="true">↗</span></button>
+              </div>
+              <ul className="week-chart" aria-label="Daily screen time" role="list">
+                {week.map(({ date, seconds }, index) => (
+                  <li key={activityDay(date)} className={index === week.length - 1 ? "chart-today" : undefined} title={formatScreenTime(seconds)}>
+                    <span className="sr-only">{date.toLocaleDateString(undefined, { dateStyle: "full" })}: {formatScreenTime(seconds)}</span>
+                    <div className="chart-column" aria-hidden="true"><span style={{ height: `${(seconds / chartMaximum) * 100}%` }} /></div>
+                    <span className="chart-day" aria-hidden="true">{date.toLocaleDateString(undefined, { weekday: "short" })}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="chart-summary">
+                <span>{week.some(({ seconds }) => seconds > 0) ? `${formatScreenTime(week.reduce((total, day) => total + day.seconds, 0))} over 7 days` : "No screen time recorded this week."}</span>
+                <span>Total <strong>{formatScreenTime(stats.activeSecondsTotal)}</strong></span>
+              </div>
+            </section>
+
+            <section className="dashboard-pet content-card">
+              <div className="dashboard-panel-heading"><h2>Your companion</h2><span className="pet-level">Level {pet.level}</span></div>
+              <div className="companion-stage"><span className="companion-avatar"><PetSprite species={pet.species} customFrames={pet.customFrames} /></span></div>
+              <div className="companion-details">
+                <h3>{pet.name}</h3>
+                <div className="dashboard-progress-label"><span>Level progress</span><span>{levelXp} / {XP_PER_LEVEL} XP</span></div>
+                <progress aria-label="Pet level progress" max={XP_PER_LEVEL} value={levelXp} />
+                <button className="companion-button" onClick={() => setPage("pet")}>Visit pet room <span aria-hidden="true">↗</span></button>
+              </div>
+            </section>
+
+            <section className="dashboard-plan content-card">
+              <div className="dashboard-panel-heading"><h2>Up next</h2><button className="text-button" onClick={() => setPage("calendar")}>Open calendar <span aria-hidden="true">↗</span></button></div>
+              <div className="dashboard-progress-label"><span>Task progress</span><span>{completedCount} of {tasks.length} complete</span></div>
+              <progress aria-label="Tasks completed" max={Math.max(1, tasks.length)} value={completedCount} />
+              {nextTasks.length ? (
+                <ul className="dashboard-task-list">
+                  {nextTasks.map((task) => (
+                    <li key={task.id}>
+                      <button className="check-button" aria-label={`Complete ${task.title}`} onClick={() => completeTask(task.id)} />
+                      <span>{task.title}</span>
+                      {task.dueAt && <time dateTime={task.dueAt}>{new Date(task.dueAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="dashboard-empty">You're all caught up.</p>}
+            </section>
+          </div>
         )}
 
         {page === "tasks" && <TaskBoard tasks={tasks} onToggle={completeTask} onAdd={addTask} />}
@@ -171,7 +230,6 @@ export default function App() {
         {page === "friends" && <FriendsPanel screenTime={screenTime} />}
         {page === "account" && <AccountPanel />}
 
-        <footer className="footer">Made for first years <span>✦</span></footer>
       </main>
       <TaskReminder tasks={tasks} pet={pet} onDismiss={dismissTaskReminder} onViewTasks={() => setPage("tasks")} />
     </div>

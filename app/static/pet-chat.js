@@ -3,6 +3,7 @@ const input = document.querySelector("#message");
 const send = form.querySelector("button");
 const log = document.querySelector("#chat-log");
 const typing = document.querySelector("#typing");
+const speech = document.querySelector("#pet-speech");
 
 function load(key) {
   try {
@@ -51,9 +52,30 @@ function bubble(text, who) {
   message.textContent = text;
   log.append(message);
   log.scrollTop = log.scrollHeight;
+  if (who === "pet") speech.textContent = text;
 }
 
-const petName = plannerContext().pet.name || "Biscuit";
+function replyBubble(text) {
+  bubble(text, "pet");
+  if (["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)) {
+    void fetch("/api/desktop-pet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: Array.from(text).slice(0, 280).join("") }),
+    }).catch(() => {});
+  }
+}
+
+const savedPet = load("gencity-progress")?.pet ?? load("gencity-pet");
+const petName = plannerContext().pet.name || "Wobbles";
+const species = savedPet?.species ?? ({ "🐱": "cat", "🐶": "dog" }[savedPet?.avatar] ?? "camel");
+document.querySelectorAll(".speaker-sprite img").forEach((frame, index) => {
+  if (species === "custom" && /^data:image\/png;base64,/.test(savedPet?.customFrames?.[index] ?? "")) {
+    frame.src = savedPet.customFrames[index];
+  } else if (["camel", "cat", "dog"].includes(species)) {
+    frame.src = new URL(`./${species}-${index + 1}.png`, frame.src);
+  }
+});
 document.querySelector("#pet-name").textContent = petName;
 bubble(`Hi! I’m ${petName}. What would you like to talk about?`, "pet");
 
@@ -75,9 +97,9 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error();
     const { reply } = await response.json();
     if (typeof reply !== "string" || !reply.trim()) throw new Error();
-    bubble(reply, "pet");
+    replyBubble(reply);
   } catch {
-    bubble("I'm right here with you. Let’s take one small step together. 💜", "pet");
+    replyBubble("I'm right here with you. Let’s take one small step together. 💜");
   } finally {
     typing.textContent = "";
     send.disabled = false;

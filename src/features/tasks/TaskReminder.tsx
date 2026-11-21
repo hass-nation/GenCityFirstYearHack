@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Pet, Task } from "../../types";
+import PetSprite from "../pet/PetSprite";
+import { speakOnDesktop } from "../pet/desktopSync";
 import { getNextTaskReminder } from "./reminders";
 
 type Props = {
@@ -23,11 +25,16 @@ export default function TaskReminder({ tasks, pet, onDismiss, onViewTasks }: Pro
   }, []);
 
   const task = getNextTaskReminder(tasks, now);
+  const reminder = task ? `It’s time for ${task.title}.` : "";
+  useEffect(() => {
+    if (reminder) speakOnDesktop(reminder);
+  }, [reminder, task?.id]);
+
   return (
     <div className={task ? "pet-task-reminder" : undefined}>
       <div role="status">
         {task && <>
-          <span className="reminder-avatar" aria-hidden="true">{pet.avatar ?? "🐶"}</span>
+          <PetSprite className="reminder-avatar" species={pet.species} customFrames={pet.customFrames} />
           <strong>{pet.name} says it’s time for {task.title}.</strong>
           {task.description && <p>{task.description}</p>}
         </>}

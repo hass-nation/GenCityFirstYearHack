@@ -1,0 +1,6 @@
+Camel, cat and dog sprites by Ezekyuhl, from 2 frame Animals.
+Source: https://ezekyuhl.itch.io/2-frame-animals
+License: Creative Commons Attribution 4.0 International (CC BY 4.0).
+https://creativecommons.org/licenses/by/4.0/
+
+The original AnimalSheet.png was split into separate frames and cropped to remove unused transparent rows.

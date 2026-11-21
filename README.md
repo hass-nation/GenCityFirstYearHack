@@ -8,12 +8,12 @@ PC Pet is a student planner with a virtual companion. Build a checklist, earn XP
 | --- | --- |
 | **Tasks and Calendar** | Add a name, optional description, and reminder date and time to each task. Browse scheduled tasks in the monthly calendar. Your pet pops up inside the open planner when a task is due. |
 | **Dashboard** | See your pet level, tasks done, next unfinished task, best current streak, screen time today and all time, and completed reminders. A completed reminder is a scheduled task marked done. |
-| **Pet room** | Name and customise your pet, change its room theme, and feed, play with, or rest it. First-time task completions earn 20 XP and play earns 5 XP. Each 100 XP adds a level. |
+| **Pet room** | Start with Wobbles the camel, switch to the cat or dog, or upload two images for your own animated pet. You can name your pet, change its room theme, and feed, play with, or rest it. First-time task completions earn 20 XP and play earns 5 XP. Each 100 XP adds a level. |
 | **Windows activity** | The planner discovers foreground apps automatically and ranks them by time used today. **Open tabs** shows the labels Windows exposes, grouped by window. Use **Stop tracking** to pause capture. |
 | **Website streaks** | On Windows, enable the Chrome or Edge extension for the local planner. Enable **Earn XP** for an app or website to get 10 XP after 10 minutes in a day, plus 5 XP per qualifying day from streak day three. Site and app awards contribute to one pet level. Website time is included in browser time when calculating the total. |
 | **Friends and parties** | Add friends by code, create or join a party, and start a shared 25-minute countdown when at least two people have joined and everyone is ready. In Friends, you can opt in to sharing your daily screen-time total. Turning it off removes the total from friends' view. |
 | **Voice and chat** | In Pet room, use scripted chat or select **Voice command** and try “feed pet”, “rest”, or “open calendar”. Voice needs a supported browser and microphone permission. The separate Flask `/pet` page supports optional Cortex chat with a scripted fallback. |
-| **Mac desktop companion** | The separate macOS overlay shows a draggable, always-on-top pet that can display messages from friends. |
+| **Desktop companion** | See your pet walk across the desktop and show its replies in a speech bubble. The macOS helper also supports messages from friends. |
 
 ## Run locally
 
@@ -30,7 +30,15 @@ Open `http://127.0.0.1:5000`. For frontend hot reload, leave Flask running and s
 
 - **Try activity rewards.** Run Flask locally on the Windows PC you're using. In **Activity**, switch between apps to discover them and enable **Earn XP** on the entries you want to reward. For websites, [load and enable the browser extension](browser_activity/README.md).
 - **Try multiplayer and sharing.** Open the same planner URL in two separate browser profiles or a regular and private window. Create a different Friends profile in each. Use a friend code to connect the profiles and a party code to join the same lobby. Across devices, both players need the same Flask server with a persistent SQLite database.
-- **Try the desktop pet.** Follow the [macOS overlay setup](desktop/PetOverlay/README.md). It requires macOS 13 or newer.
+- **Try the desktop pet.** On Windows, with local Flask running on port 5000, run `python -m desktop.pet_overlay` in a second terminal. The pet can be dragged, and its right-click menu pauses walking or quits. On macOS 13 or newer, follow the [macOS overlay setup](desktop/PetOverlay/README.md).
+
+## Pet sprites
+
+In **Pet room**, choose **Camel**, **Cat**, or **Dog**. To make your own, open **Upload a custom sprite**, choose two PNG, JPEG, or WebP images in frame order, and select **Use custom sprite**. The planner alternates the two frames automatically. Transparent PNGs with matching framing give the smoothest result. Each image can be up to 4 MB and is fitted to a 64×64 sprite on your device.
+
+The local Flask planner shares your selected sprite and the pet’s replies with the desktop helper on the same computer. Open the local planner to change the desktop pet or send it a new speech bubble. The sprite selection stays on your computer.
+
+The built-in sprites come from [2 frame Animals by Ezekyuhl](https://ezekyuhl.itch.io/2-frame-animals) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The frames were cropped from the source sheet.
 
 ## Cortex chat setup
 
