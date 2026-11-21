@@ -1,7 +1,6 @@
 import type { Task } from "../../types.ts";
 
 export type PlannerTask = Task & {
-  dueAt?: string;
   completedAt?: string;
 };
 

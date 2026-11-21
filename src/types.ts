@@ -4,6 +4,9 @@ export type Task = {
   id: string;
   title: string;
   done: boolean;
+  description?: string;
+  dueAt?: string;
+  reminderDismissed?: boolean;
 };
 
 export type PetAction = "feed" | "play" | "rest";

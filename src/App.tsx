@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import AccountPanel from "./features/accounts/AccountPanel";
 import PetRoom from "./features/pet/PetRoom";
 import TaskBoard from "./features/tasks/TaskBoard";
+import TaskReminder from "./features/tasks/TaskReminder";
 import type { Page, Pet, PetAction, Task } from "./types";
 
 const starterTasks: Task[] = [
@@ -74,8 +75,13 @@ export default function App() {
     }
   }
 
-  function addTask(title: string) {
-    setTasks((current) => [...current, { id: crypto.randomUUID(), title, done: false }]);
+  function addTask(task: Pick<Task, "title" | "description" | "dueAt">) {
+    const newTask = { ...task, id: crypto.randomUUID(), done: false };
+    setTasks((current) => [...current, newTask]);
+  }
+
+  function dismissTaskReminder(taskId: string) {
+    setTasks((current) => current.map((task) => task.id === taskId ? { ...task, reminderDismissed: true } : task));
   }
 
   function act(action: PetAction) {
@@ -134,6 +140,7 @@ export default function App() {
 
         <footer className="footer">Made for first years <span>✦</span></footer>
       </main>
+      <TaskReminder tasks={tasks} pet={pet} onDismiss={dismissTaskReminder} onViewTasks={() => setPage("tasks")} />
     </div>
   );
 }

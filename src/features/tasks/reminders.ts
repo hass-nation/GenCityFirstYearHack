@@ -1,5 +1,20 @@
 import { getTaskList } from "./task-list.ts";
 import type { PlannerTask } from "./tasks.ts";
+import type { Task } from "../../types.ts";
+
+export function getNextTaskReminder(tasks: readonly Task[], now: number): Task | undefined {
+  let next: Task | undefined;
+  let earliest = Infinity;
+  for (const task of tasks) {
+    if (task.done || task.reminderDismissed || !task.dueAt) continue;
+    const due = Date.parse(task.dueAt);
+    if (due <= now && due < earliest) {
+      next = task;
+      earliest = due;
+    }
+  }
+  return next;
+}
 
 type Reminder = {
   title: string;

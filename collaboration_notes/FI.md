@@ -2,6 +2,12 @@
 
 Keep this note current when changing FI files, shared interfaces, or handoffs. Record what changed and how it was verified.
 
+## Checklist reminder handoff
+
+`TaskBoard.tsx` collects a task name, optional description, and local reminder date and time. `onAdd` receives `{ title, description?, dueAt }` with the date converted to an ISO timestamp. `App.tsx` adds the ID and saves the task to browser storage. Older tasks without a date still work as checklist items.
+
+`TaskReminder.tsx` uses the current pet name and avatar to pop up on any planner page when an unfinished task becomes due. `getNextTaskReminder(tasks, now)` takes Unix milliseconds and returns the earliest due task that is unfinished and has no saved dismissal. Acknowledging the reminder saves the dismissal without marking the task complete. Overdue reminders can appear after reopening the planner. The popup runs inside the page and requires no Flask endpoint or GitHub Pages deployment.
+
 ## Usage tracking handoff
 
 ### What FI has done
@@ -34,7 +40,7 @@ Keep planner logic in `src/features/tasks/`. Coordinate edits to `src/App.tsx`, 
 
 ## How to connect changes
 
-1. **Task UI.** `TaskBoard` sends a trimmed title or task ID to `App.tsx`. Update state through those callbacks so the dashboard and pet rewards see the same task state.
+1. **Task UI.** `TaskBoard` sends task details on add or a task ID on toggle to `App.tsx`. Update state through those callbacks so the dashboard and pet rewards see the same task state.
 2. **Planner logic.** The six modules below run in the demo. To wire up deadlines and streaks, pass planner tasks into the relevant functions and provide `now` from the caller. Older tasks may have neither timestamp, so keep those fields optional when reading saved data. The current Home dashboard selects the first unfinished task, while `getDashboardSummary` selects the earliest deadline.
 3. **Backend.** Add Flask API routes in `backend/api.py` when a feature needs them. Agree on the method, JSON fields, and error responses before adding a React caller. Use relative `/api/...` URLs so Vite forwards them in development and Flask handles them when serving the built site.
 
@@ -78,13 +84,13 @@ The Python collector scans top-level windows with Windows UI Automation. The [Ch
 
 ## Shared data
 
-`Task` in [`src/types.ts`](../src/types.ts) has `id: string`, `title: string`, and `done: boolean`. `PlannerTask` adds optional `dueAt` and `completedAt` ISO timestamp strings, so existing tasks can be passed into the planner modules. Functions that take `now` expect a JavaScript `Date`. Pass a fixed date for repeatable examples.
+`Task` in [`src/types.ts`](../src/types.ts) has `id`, `title`, and `done`, plus optional `description`, `dueAt` (ISO timestamp), and `reminderDismissed`. `PlannerTask` adds an optional `completedAt` ISO timestamp. Existing tasks can still be passed into the planner modules. Summary functions take `now` as a JavaScript `Date`, while the scheduled popup selector takes Unix milliseconds.
 
 ## Planner files
 
 | File and function | Inputs | Outputs and behavior |
 | --- | --- | --- |
-| [TaskBoard.tsx](../src/features/tasks/TaskBoard.tsx) · `TaskBoard` | `tasks: Task[]`, `onToggle(taskId)`, `onAdd(title)` | Renders the task list, remaining count, and add form. Calls `onAdd` with a trimmed, non-empty title or `onToggle` with the selected task ID. |
+| [TaskBoard.tsx](../src/features/tasks/TaskBoard.tsx) · `TaskBoard` | `tasks: Task[]`, `onToggle(taskId)`, `onAdd({ title, description?, dueAt })` | Renders the checklist, remaining count, and scheduling form. Emits a trimmed title with task details on add, or the selected task ID on toggle. |
 | [tasks.ts](../src/features/tasks/tasks.ts) · `createTask` | ID, title, optional due date as a `Date` | An unfinished `PlannerTask` with a trimmed title and an optional ISO due date. The caller supplies the ID. |
 | `tasks.ts` · `completeTask` | `PlannerTask`, completion `Date` | A completed task with an ISO completion timestamp. An already completed task is returned as-is. |
 | [task-list.ts](../src/features/tasks/task-list.ts) · `getTaskList` | Read-only list of planner tasks | An array of unfinished tasks in input order. |
@@ -122,3 +128,16 @@ The overlay uses these shared Flask routes in [`backend/api.py`](../backend/api.
 The token hash, profiles, friendships, and message queue are stored in `instance/gencity.sqlite3`. The overlay token is kept in macOS user defaults. For messages between devices, both overlays must use the same hosted Flask server and persistent database; the documented local server binds only to `127.0.0.1` and is reachable on that Mac only. The recipient overlay must be running to show a live bubble.
 
 Verified for this commit: `npm run build`, `swift build` in `desktop/PetOverlay`, `git diff --check`, Python syntax compilation, and a Flask client smoke check covering profile creation, friend pairing, message delivery, and pet customisation. The Swift build emits two linker search-path warnings from the installed Command Line Tools but succeeds.
+
+### Connecting checklist reminders to the desktop pet
+
+The existing [PetOverlay](../desktop/PetOverlay/README.md) is the desktop dog implementation. It uses Swift and AppKit on macOS 13+ and already has a floating panel and chat bubbles. FI's checklist reminder runs in the React planner and saves tasks and dismissals in browser storage.
+
+For desktop reminders, FI and the overlay owner need to agree on how the desktop client receives scheduled tasks and acknowledges them. On macOS, the existing overlay can display the reminder. Windows needs its own desktop client. GitHub Pages can host the React checklist, while the desktop client runs on the user's machine.
+
+## FI priority update: gamification, XP, levels, and Friends
+
+Task and reminder work is paused while teammates make the desktop pet compatible across devices. The existing browser checklist and popup are available for testing. FI will revisit desktop reminder integration once the team confirms compatibility is ready.
+
+- **Gamification, XP, and levels.** Start from the existing progression in `src/App.tsx` and `src/features/pet/PetRoom.tsx`. The planner currently awards 20 XP for completing a task and 5 XP for playing, with one level per 100 XP. XP lives in browser storage. Coordinate with TT on reward rules, level feedback, and what progression should eventually carry across devices.
+- **Friends mode.** Build on the existing Flask friend-code and messaging endpoints in `backend/api.py` and the Friends flow in the macOS overlay. Coordinate with the desktop and profile owners on how the planner should use those profiles and which pet details friends can see before extending the API.
