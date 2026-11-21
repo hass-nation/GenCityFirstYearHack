@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { Task } from "../../types";
+import { TASK_XP } from "../pet/progression";
 
 type Props = {
   tasks: Task[];
@@ -49,7 +50,7 @@ export default function TaskBoard({ tasks, onToggle, onAdd }: Props) {
               {task.description && <p>{task.description}</p>}
               {task.dueAt && <time dateTime={task.dueAt}>{new Date(task.dueAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>}
             </div>
-            <span className="task-xp">+20 XP</span>
+            <span className="task-xp">{task.done || task.xpAwarded ? "XP earned" : `+${TASK_XP} XP`}</span>
           </li>
         ))}
       </ul>

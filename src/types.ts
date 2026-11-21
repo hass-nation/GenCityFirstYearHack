@@ -7,6 +7,7 @@ export type Task = {
   description?: string;
   dueAt?: string;
   reminderDismissed?: boolean;
+  xpAwarded?: boolean;
 };
 
 export type PetAction = "feed" | "play" | "rest";
