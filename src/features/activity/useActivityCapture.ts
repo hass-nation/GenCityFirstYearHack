@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ActivityCapture } from "./activity";
+import { attributeWebsite, sampleSite } from "./siteSampling";
 
 const preferenceKey = "gencity-activity-enabled";
 
@@ -37,6 +38,7 @@ export function useActivityCapture(onCapture: (capture: ActivityCapture) => void
     try {
       let retriedBusy = false;
       while (!controller.signal.aborted && !stopRequested.current) {
+        const before = sampleSite();
         const response = await fetch("/api/activity/capture", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -53,7 +55,9 @@ export function useActivityCapture(onCapture: (capture: ActivityCapture) => void
         if (!response.ok) throw new Error(data.error || "Could not start foreground tracking.");
         if (!Array.isArray(data.apps)) throw new Error("The tracker returned an invalid capture.");
         if (controller.signal.aborted) break;
-        onCapture(data);
+        const first = await before;
+        const after = first ? await sampleSite() : null;
+        if (!controller.signal.aborted) onCapture(attributeWebsite(data, first, after));
       }
     } catch (failure) {
       if (!controller.signal.aborted) {

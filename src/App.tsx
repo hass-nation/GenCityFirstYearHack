@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import AccountPanel from "./features/accounts/AccountPanel";
 import ActivityPanel from "./features/activity/ActivityPanel";
-import { recordAppCapture, setAppPreference, type ActivityCapture } from "./features/activity/activity";
+import { activityDay, recordAppCapture, setAppPreference, type ActivityCapture } from "./features/activity/activity";
 import { useActivityCapture } from "./features/activity/useActivityCapture";
 import FriendsPanel from "./features/friends/FriendsPanel";
+import { useScreenTimeSharing } from "./features/friends/screenTimeSharing";
 import PetRoom from "./features/pet/PetRoom";
 import { applyPetAction, toggleTaskProgress, type PlannerProgress } from "./features/pet/progression";
 import TaskBoard from "./features/tasks/TaskBoard";
 import TaskReminder from "./features/tasks/TaskReminder";
+import CalendarPanel from "./features/tasks/CalendarPanel";
+import { dashboardStats, formatScreenTime } from "./features/tasks/dashboardStats";
 import type { Page, Pet, PetAction, Task } from "./types";
 
 const starterTasks: Task[] = [
@@ -47,6 +50,7 @@ function loadProgress(): PlannerProgress {
 const navItems: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "⌂" },
   { id: "tasks", label: "Tasks", icon: "▤" },
+  { id: "calendar", label: "Calendar", icon: "▦" },
   { id: "activity", label: "Activity", icon: "◷" },
   { id: "pet", label: "Pet room", icon: "♡" },
   { id: "friends", label: "Friends", icon: "♧" },
@@ -105,6 +109,10 @@ export default function App() {
   }
 
   const completedCount = tasks.filter((task) => task.done).length;
+  const now = new Date();
+  const stats = dashboardStats(tasks, activity, now);
+  const screenTime = { day: activityDay(now), seconds: stats.activeSecondsToday };
+  useScreenTimeSharing(screenTime);
 
   return (
     <div className="app-shell">
@@ -147,13 +155,20 @@ export default function App() {
             <div className="stat-card"><span className="stat-icon">✓</span><span className="stat-label">TASKS DONE</span><strong>{completedCount}<small> / {tasks.length}</small></strong><button className="text-button" onClick={() => setPage("tasks")}>Open task list →</button></div>
             <div className="pet-preview"><div><p className="eyebrow">YOUR COMPANION</p><h2>{pet.name}</h2><p>Level {pet.level} · {pet.xp} XP</p><button className="text-button" onClick={() => setPage("pet")}>Visit pet room →</button></div><div className="pet-emoji" aria-label={`${pet.name}, your pet`}>{pet.avatar ?? "🐶"}</div></div>
             <div className="next-card"><p className="eyebrow">A QUICK REMINDER</p><h3>{tasks.find((task) => !task.done)?.title ?? "You're all caught up!"}</h3><button className="text-button" onClick={() => setPage("tasks")}>View today's plan →</button></div>
+            <dl className="dashboard-activity content-card">
+              <div><dt>Screen time today</dt><dd>{formatScreenTime(stats.activeSecondsToday)}</dd></div>
+              <div><dt>Total screen time</dt><dd>{formatScreenTime(stats.activeSecondsTotal)}</dd></div>
+              <div><dt>Best current streak</dt><dd>{stats.bestStreak} {stats.bestStreak === 1 ? "day" : "days"}</dd></div>
+              <div><dt>Reminders completed</dt><dd>{stats.remindersCompleted}</dd></div>
+            </dl>
           </section>
         )}
 
         {page === "tasks" && <TaskBoard tasks={tasks} onToggle={completeTask} onAdd={addTask} />}
+        {page === "calendar" && <CalendarPanel tasks={tasks} onViewTasks={() => setPage("tasks")} />}
         {page === "activity" && <ActivityPanel activity={activity} tracking={tracking} onPreference={changeAppPreference} />}
-        {page === "pet" && <PetRoom pet={pet} onAction={act} onRename={renamePet} onCustomise={customisePet} />}
-        {page === "friends" && <FriendsPanel />}
+        {page === "pet" && <PetRoom pet={pet} onAction={act} onRename={renamePet} onCustomise={customisePet} onNavigate={setPage} />}
+        {page === "friends" && <FriendsPanel screenTime={screenTime} />}
         {page === "account" && <AccountPanel />}
 
         <footer className="footer">Made for first years <span>✦</span></footer>

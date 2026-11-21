@@ -13,8 +13,10 @@ type AppActivity = {
   hidden?: boolean;
 };
 
-export type ActivityState = { apps: Record<string, AppActivity>; capturedThrough: number };
-export type ActivityCapture = { apps: { name: string; sessions: { start: string; end: string }[] }[] };
+export type ActivityState = { apps: Record<string, AppActivity>; capturedThrough: number; websiteThrough?: number };
+type TrackedSessions = { name: string; sessions: { start: string; end: string }[] }[];
+export type ActivityCapture = { apps: TrackedSessions; websites?: TrackedSessions };
+const WEBSITE_PREFIX = "site:";
 
 const emptyActivity: ActivityState = { apps: {}, capturedThrough: 0 };
 
@@ -41,11 +43,14 @@ function streakThrough(app: AppActivity, day: string) {
 
 export function getAppActivity(activity: ActivityState | undefined, today: string) {
   const weekStart = moveDay(today, -6);
-  return Object.entries(activity?.apps ?? {}).map(([name, app]) => ({
-    name,
+  return Object.entries(activity?.apps ?? {}).map(([id, app]) => ({
+    id,
+    website: id.startsWith(WEBSITE_PREFIX),
+    name: id.startsWith(WEBSITE_PREFIX) ? id.slice(WEBSITE_PREFIX.length) : id,
     hidden: app.hidden ?? false,
     rewards: Boolean(app.rewardsSince),
     todayMs: app.days[today] ?? 0,
+    totalMs: Object.values(app.days).reduce((total, ms) => total + ms, 0),
     recentMs: Object.entries(app.days).reduce((total, [day, ms]) => day >= weekStart && day <= today ? total + ms : total, 0),
     streak: streakThrough(app, app.days[today] >= QUALIFYING_MS ? today : moveDay(today, -1)),
     earnedXp: Object.values(app.awards).reduce((total, xp) => total + xp, 0),
@@ -66,7 +71,7 @@ function settle(state: PlannerProgress, activity: ActivityState, candidates: Map
       const xp = DAILY_APP_XP + (streak >= BONUS_START_DAY ? STREAK_BONUS_XP : 0);
       app.awards = { ...app.awards, [day]: xp };
       total += xp;
-      apps.push({ name, streak });
+      apps.push({ name: name.startsWith(WEBSITE_PREFIX) ? name.slice(WEBSITE_PREFIX.length) : name, streak });
     }
   }
   if (!total) return { ...state, activity };
@@ -76,13 +81,10 @@ function settle(state: PlannerProgress, activity: ActivityState, candidates: Map
   return { ...state, activity, ...awardXp(state.pet, "activity", total, detail) };
 }
 
-export function recordAppCapture(state: PlannerProgress, capture: ActivityCapture, now: Date): PlannerProgress {
-  const previous = state.activity ?? emptyActivity;
-  const apps: ActivityState["apps"] = Object.assign(Object.create(null), previous.apps);
-  let capturedThrough = previous.capturedThrough;
-  const candidates = new Map<string, Set<string>>();
-  const sessions = capture.apps.flatMap(({ name, sessions }) => sessions.map(({ start, end }) => ({
-    name, start: Date.parse(start), end: Date.parse(end),
+function collectSessions(apps: ActivityState["apps"], candidates: Map<string, Set<string>>, records: TrackedSessions, startThrough: number, now: Date, prefix = "") {
+  let capturedThrough = startThrough;
+  const sessions = records.flatMap(({ name, sessions }) => sessions.map(({ start, end }) => ({
+    name: typeof name === "string" && name.trim() ? prefix + name : "", start: Date.parse(start), end: Date.parse(end),
   }))).sort((left, right) => left.start - right.start);
 
   for (const session of sessions) {
@@ -111,7 +113,17 @@ export function recordAppCapture(state: PlannerProgress, capture: ActivityCaptur
     candidates.set(session.name, days);
   }
 
-  return capturedThrough === previous.capturedThrough ? state : settle(state, { apps, capturedThrough }, candidates);
+  return capturedThrough;
+}
+
+export function recordAppCapture(state: PlannerProgress, capture: ActivityCapture, now: Date): PlannerProgress {
+  const previous = state.activity ?? emptyActivity;
+  const apps: ActivityState["apps"] = Object.assign(Object.create(null), previous.apps);
+  const candidates = new Map<string, Set<string>>();
+  const capturedThrough = collectSessions(apps, candidates, capture.apps, previous.capturedThrough, now);
+  const websiteThrough = collectSessions(apps, candidates, capture.websites ?? [], previous.websiteThrough ?? 0, now, WEBSITE_PREFIX);
+  if (capturedThrough === previous.capturedThrough && websiteThrough === (previous.websiteThrough ?? 0)) return state;
+  return settle(state, { apps, capturedThrough, websiteThrough }, candidates);
 }
 
 export function setAppPreference(state: PlannerProgress, name: string, change: { rewards?: boolean; hidden?: boolean }, now: Date): PlannerProgress {

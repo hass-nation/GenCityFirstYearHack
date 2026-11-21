@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import wraps
+from datetime import date
 import hashlib
 import re
 import secrets
@@ -61,6 +62,11 @@ def database() -> sqlite3.Connection:
                 ready INTEGER NOT NULL DEFAULT 0
             );
             CREATE INDEX IF NOT EXISTS party_members_by_code ON party_members(party_code);
+            CREATE TABLE IF NOT EXISTS shared_screen_time (
+                user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                day TEXT NOT NULL,
+                seconds INTEGER NOT NULL CHECK (seconds BETWEEN 0 AND 90000)
+            );
             """
         )
         g.database = connection
@@ -146,7 +152,45 @@ def create_user():
 @api.get("/me")
 @require_user
 def get_me():
-    return jsonify({"profile": public_profile(g.user)})
+    sharing = database().execute("SELECT 1 FROM shared_screen_time WHERE user_id = ?", (g.user["id"],)).fetchone()
+    return jsonify(profile={**public_profile(g.user), "share_screen_time": sharing is not None})
+
+
+@api.route("/me/screen-time", methods=["PATCH", "POST"])
+@require_user
+def share_screen_time():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="Send a screen-time preference or daily total."), 400
+    connection = database()
+    user_id = g.user["id"]
+    if request.method == "PATCH":
+        enabled = payload.get("enabled")
+        if type(enabled) is not bool:
+            return jsonify(error="Choose whether to share screen time."), 400
+        if not enabled:
+            with connection:
+                connection.execute("DELETE FROM shared_screen_time WHERE user_id = ?", (user_id,))
+            return jsonify(enabled=False)
+
+    day, seconds = payload.get("day"), payload.get("seconds")
+    try:
+        valid_day = isinstance(day, str) and date.fromisoformat(day).isoformat() == day
+    except ValueError:
+        valid_day = False
+    if not valid_day or type(seconds) is not int or not 0 <= seconds <= 90000:
+        return jsonify(error="Send a valid date and total in seconds."), 400
+
+    with connection:
+        if request.method == "PATCH":
+            connection.execute(
+                """INSERT INTO shared_screen_time (user_id, day, seconds) VALUES (?, ?, ?)
+                   ON CONFLICT(user_id) DO UPDATE SET day=excluded.day, seconds=excluded.seconds""",
+                (user_id, day, seconds),
+            )
+            return jsonify(enabled=True)
+        updated = connection.execute("UPDATE shared_screen_time SET day = ?, seconds = ? WHERE user_id = ?", (day, seconds, user_id))
+        return jsonify(enabled=bool(updated.rowcount))
 
 
 @api.patch("/me/pet")
@@ -182,11 +226,16 @@ def update_pet():
 @require_user
 def list_friends():
     rows = database().execute(
-        """SELECT u.* FROM friends f JOIN users u ON u.id = f.friend_id
+        """SELECT u.*, s.day AS screen_day, s.seconds AS screen_seconds
+           FROM friends f JOIN users u ON u.id = f.friend_id
+           LEFT JOIN shared_screen_time s ON s.user_id = u.id
            WHERE f.user_id = ? ORDER BY u.display_name COLLATE NOCASE""",
         (g.user["id"],),
     ).fetchall()
-    return jsonify({"friends": [public_profile(row) for row in rows]})
+    return jsonify(friends=[{
+        **public_profile(row),
+        **({"screen_time": {"day": row["screen_day"], "seconds": row["screen_seconds"]}} if row["screen_day"] else {}),
+    } for row in rows])
 
 
 @api.post("/friends")

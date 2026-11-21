@@ -29,6 +29,7 @@ def create_app(frontend_dir: Path | None = None) -> Flask:
         return send_from_directory(dist, "index.html")
 
     @app.get("/assets/<path:filename>")
+    @app.get("/GenCityFirstYearHack/assets/<path:filename>")
     def assets(filename: str):
         return send_from_directory(dist / "assets", filename)
 

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { activityDay, getAppActivity, recordAppCapture, setAppPreference } from "../src/features/activity/activity.ts";
+import { attributeWebsite } from "../src/features/activity/siteSampling.ts";
+import { dashboardStats } from "../src/features/tasks/dashboardStats.ts";
+import { monthDays, scheduledTasks } from "../src/features/tasks/calendar.ts";
 
 const pet = { name: "Pixel", xp: 90, level: 1, hunger: 35, happiness: 70, energy: 80 };
 const clock = (day, hour = 12, minute = 0) => new Date(2026, 10, day, hour, minute);
@@ -59,4 +62,31 @@ test("ranks apps by time today, breaking ties by seven-day usage", () => {
     anki: { days: { [today]: 30_000, [yesterday]: 1_000 }, awards: {} },
   }, capturedThrough: 0 }, today);
   assert.deepEqual(rows.map((row) => row.name), ["anki", "code", "chrome"]);
+});
+
+test("a steady tab can earn its own streak XP without double-counting screen time", () => {
+  const input = sample(21, "chrome");
+  const tab = { browser: "chrome", domain: "example.edu", tabId: 1, revision: 1 };
+  assert.equal(attributeWebsite(input, tab, { ...tab, revision: 2 }).websites, undefined);
+  const capture = attributeWebsite(input, tab, tab);
+  const now = clock(21, 13);
+  let state = recordAppCapture({ tasks: [], pet }, capture, now);
+  state = setAppPreference(state, "site:example.edu", { rewards: true }, now);
+  state = recordAppCapture(state, capture, now);
+  const site = getAppActivity(state.activity, activityDay(now)).find(({ website }) => website);
+  assert.equal(site.name, "example.edu");
+  assert.equal(site.earnedXp, 10);
+  assert.equal(site.streak, 1);
+  assert.equal(state.pet.xp, 100);
+  assert.equal(dashboardStats([], state.activity, now).activeSecondsToday, 600);
+  assert.equal(dashboardStats([], state.activity, now).activeSecondsTotal, 600);
+});
+
+test("calendar uses local dates and dashboard counts completed scheduled tasks only", () => {
+  const dueAt = clock(21).toISOString();
+  const tasks = [{id: "a", done: true, dueAt}, {id: "b", done: false, dueAt}, {id: "c", done: true, dueAt: "invalid"}];
+  assert.equal(monthDays(new Date(2024, 1, 1)).days.length, 29);
+  assert.equal(monthDays(new Date(2024, 1, 1)).offset, 3);
+  assert.equal(scheduledTasks(tasks)[0].day, activityDay(clock(21)));
+  assert.equal(dashboardStats(tasks, undefined, clock(21)).remindersCompleted, 1);
 });

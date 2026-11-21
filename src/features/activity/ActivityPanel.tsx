@@ -22,7 +22,7 @@ export default function ActivityPanel({ activity, tracking, onPreference }: Prop
   return (
     <section className="content-card activity-panel" aria-labelledby="activity-title">
       <header className="activity-header">
-        <div><h2 id="activity-title">Your apps</h2><p>Switch between your Windows apps to see them here.</p></div>
+        <div><h2 id="activity-title">Your apps and websites</h2><p>For websites, enable tracking for this planner in the PC Pet extension for Chrome or Edge.</p></div>
         {tracking.status === "idle"
           ? <button className="primary-button" onClick={() => void tracking.start()}>Start tracking</button>
           : <button className="primary-button" disabled={tracking.status === "stopping"} onClick={tracking.stop}>Stop tracking</button>}
@@ -38,23 +38,23 @@ export default function ActivityPanel({ activity, tracking, onPreference }: Prop
       {visible.length ? (
         <ul className="activity-list" aria-label="Tracked apps, most used today first">
           {visible.map((app) => {
-            const windows = tabSnapshot?.windows[app.name]?.filter((window) => window.tabs.length > 0) ?? [];
+            const windows = app.website ? [] : tabSnapshot?.windows[app.name]?.filter((window) => window.tabs.length > 0) ?? [];
             const tabCount = windows.reduce((count, window) => count + window.tabs.length, 0);
             return (
-            <li className="activity-row" key={app.name}>
+            <li className="activity-row" key={app.id}>
               <div className="activity-app">
                 <h3>{app.name}</h3>
                 <dl className="activity-stats">
                   <div><dt>Today</dt><dd>{formatTime(app.todayMs)}</dd></div>
                   <div><dt>Last 7 days</dt><dd>{formatTime(app.recentMs)}</dd></div>
                   <div><dt>Streak</dt><dd>{app.streak} {app.streak === 1 ? "day" : "days"}</dd></div>
-                  <div><dt>App XP</dt><dd>{app.earnedXp}</dd></div>
+                  <div><dt>{app.website ? "Website XP" : "App XP"}</dt><dd>{app.earnedXp}</dd></div>
                 </dl>
                 {app.earnedToday > 0 && <p className="activity-earned">+{app.earnedToday} XP earned today</p>}
               </div>
               <div className="activity-actions">
-                <label><input type="checkbox" checked={app.rewards} onChange={(event) => onPreference(app.name, { rewards: event.target.checked })} aria-label={`Earn XP from ${app.name}`} /> Earn XP</label>
-                <button className="text-button" onClick={() => onPreference(app.name, { hidden: true })} aria-label={`Hide ${app.name}`}>Hide</button>
+                <label><input type="checkbox" checked={app.rewards} onChange={(event) => onPreference(app.id, { rewards: event.target.checked })} aria-label={`Earn XP from ${app.name}`} /> Earn XP</label>
+                <button className="text-button" onClick={() => onPreference(app.id, { hidden: true })} aria-label={`Hide ${app.name}`}>Hide</button>
               </div>
               {tabCount > 0 && (
                 <details className="activity-tabs">
@@ -77,7 +77,7 @@ export default function ActivityPanel({ activity, tracking, onPreference }: Prop
       {hidden.length > 0 && (
         <details className="activity-hidden">
           <summary>Hidden apps ({hidden.length})</summary>
-          <ul>{hidden.map((app) => <li key={app.name}><span>{app.name}</span><button className="text-button" onClick={() => onPreference(app.name, { hidden: false })} aria-label={`Show ${app.name}`}>Show</button></li>)}</ul>
+          <ul>{hidden.map((app) => <li key={app.id}><span>{app.name}</span><button className="text-button" onClick={() => onPreference(app.id, { hidden: false })} aria-label={`Show ${app.name}`}>Show</button></li>)}</ul>
         </details>
       )}
     </section>

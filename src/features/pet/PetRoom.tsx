@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import type { Pet, PetAction } from "../../types";
+import type { Page, Pet, PetAction } from "../../types";
+import VoiceControls from "./VoiceControls";
 import { PLAY_ENERGY, PLAY_XP, TASK_XP, XP_PER_LEVEL } from "./progression";
 
 type Props = {
@@ -7,6 +8,7 @@ type Props = {
   onAction: (action: PetAction) => void;
   onRename: (name: string) => void;
   onCustomise: (change: Partial<Pick<Pet, "avatar" | "roomTheme">>) => void;
+  onNavigate: (page: Page) => void;
 };
 
 type ChatMessage = { from: "you" | "pet"; text: string };
@@ -41,7 +43,7 @@ function replyTo(message: string, name: string) {
   return `I like chatting with you! Tell me about your day, or we can take a break together. ✨`;
 }
 
-export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props) {
+export default function PetRoom({ pet, onAction, onRename, onCustomise, onNavigate }: Props) {
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     { from: "pet", text: `Hi! I'm ${pet.name}. I'm happy you're here. What would you like to do?` },
@@ -55,11 +57,41 @@ export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props)
     event.preventDefault();
     const message = draft.trim();
     if (!message) return;
+    addMessage(message);
+    setDraft("");
+  }
+
+  function addMessage(message: string) {
     setMessages((current) => {
       const next: ChatMessage[] = [...current, { from: "you", text: message }, { from: "pet", text: replyTo(message, pet.name) }];
       return next.slice(-9);
     });
-    setDraft("");
+  }
+
+  function voiceCommand(transcript: string) {
+    const command = transcript.toLowerCase().replace(/[.!?]+$/, "");
+    if (/^(feed( (the |my )?pet)?|give (the |my )?pet a snack)$/.test(command)) {
+      if (pet.hunger <= 0) return `${pet.name} is already full.`;
+      onAction("feed");
+      return `Fed ${pet.name}.`;
+    }
+    if (/^play( with (the |my )?pet)?$/.test(command)) {
+      if (!canPlay) return `${pet.name} needs to rest before playing.`;
+      onAction("play");
+      return `Played with ${pet.name}.`;
+    }
+    if (/^(rest|rest (the |my )?pet|take a nap)$/.test(command)) {
+      if (pet.energy >= 100) return `${pet.name} is already rested.`;
+      onAction("rest");
+      return `${pet.name} had a rest.`;
+    }
+    const page = /^open (home|tasks|calendar|activity|friends)$/.exec(command)?.[1] as Page | undefined;
+    if (page) {
+      onNavigate(page);
+      return `Opened ${page}.`;
+    }
+    addMessage(transcript.slice(0, 180));
+    return `Sent your message to ${pet.name}.`;
   }
 
   return (
@@ -113,6 +145,7 @@ export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props)
           <input aria-label={`Message ${pet.name}`} value={draft} maxLength={180} onChange={(event) => setDraft(event.target.value)} placeholder={`Say something to ${pet.name}…`} />
           <button type="submit" disabled={!draft.trim()}>Send <span aria-hidden="true">↗</span></button>
         </form>
+        <VoiceControls onCommand={voiceCommand} />
         <p className="chat-note">Your companion uses a few friendly replies about your day and pet care.</p>
       </section>
     </section>

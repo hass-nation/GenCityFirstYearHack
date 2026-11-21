@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { formatScreenTime } from "../tasks/dashboardStats";
+import { friendsTokenKey as tokenKey, sharingKey, type ScreenTime } from "./screenTimeSharing";
 
-type Profile = { id: string; display_name: string; friend_code: string; pet_name: string; pet_avatar: string };
+type Profile = { id: string; display_name: string; friend_code: string; pet_name: string; pet_avatar: string; share_screen_time?: boolean; screen_time?: ScreenTime };
 type Member = Pick<Profile, "id" | "display_name" | "pet_avatar"> & { ready: boolean };
 type Party = {
   code: string;
@@ -11,7 +13,6 @@ type Party = {
   members: Member[];
 };
 type PartyResponse = { party: Party | null };
-const tokenKey = "gencity-friends-token";
 
 class FriendsError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
@@ -43,7 +44,7 @@ function formatCountdown(ms: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export default function FriendsPanel() {
+export default function FriendsPanel({ screenTime }: { screenTime: ScreenTime }) {
   const [token, setToken] = useState(() => localStorage.getItem(tokenKey) ?? "");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [friends, setFriends] = useState<Profile[]>([]);
@@ -76,6 +77,7 @@ export default function FriendsPanel() {
         ]);
         if (controller.signal.aborted) return;
         setProfile(me.profile);
+        localStorage.setItem(sharingKey, String(Boolean(me.profile.share_screen_time)));
         setFriends(connections.friends);
         showParty(current.party);
         setConnectionError("");
@@ -151,6 +153,7 @@ export default function FriendsPanel() {
           void perform(async () => {
             const result = await callApi<{ token: string; profile: Profile }>("/users", undefined, "POST", { display_name });
             localStorage.setItem(tokenKey, result.token);
+            localStorage.setItem(sharingKey, "false");
             setToken(result.token);
             setProfile(result.profile);
           });
@@ -196,6 +199,14 @@ export default function FriendsPanel() {
 
           <section className="friends-section" aria-labelledby="connections-title">
             <h3 id="connections-title">Friends</h3>
+            <label className="screen-share"><input type="checkbox" checked={Boolean(profile.share_screen_time)} disabled={busy} onChange={(event) => {
+              const enabled = event.target.checked;
+              void perform(async () => {
+                const result = await callApi<{ enabled: boolean }>("/me/screen-time", token, "PATCH", { enabled, ...screenTime });
+                localStorage.setItem(sharingKey, String(result.enabled));
+                setProfile((current) => current && { ...current, share_screen_time: result.enabled });
+              });
+            }} /> Share my daily screen-time total with friends</label>
             <p className="friends-code">Your friend code <code>{profile.friend_code}</code> <button className="text-button" onClick={() => void copyCode(profile.friend_code)}>Copy friend code</button></p>
             <form className="friends-form" onSubmit={(event) => {
               const friend_code = formValue(event, "friend_code");
@@ -208,7 +219,7 @@ export default function FriendsPanel() {
               <label>Friend code<input name="friend_code" required minLength={8} maxLength={8} autoComplete="off" /></label>
               <button className="friends-secondary" disabled={busy}>Add friend</button>
             </form>
-            {friends.length > 0 ? <ul className="friends-list" aria-label="Friends list">{friends.map((friend) => <li key={friend.id}><span>{friend.display_name}</span><span><span aria-hidden="true">{friend.pet_avatar} </span>{friend.pet_name}</span></li>)}</ul>
+            {friends.length > 0 ? <ul className="friends-list" aria-label="Friends list">{friends.map((friend) => <li key={friend.id}><span>{friend.display_name}</span><span><span aria-hidden="true">{friend.pet_avatar} </span>{friend.pet_name}{friend.screen_time && <small className="shared-time">{formatScreenTime(friend.screen_time.seconds)} screen time · {friend.screen_time.day}</small>}</span></li>)}</ul>
               : <p className="muted friends-empty">Friends you add will appear here.</p>}
           </section>
         </>

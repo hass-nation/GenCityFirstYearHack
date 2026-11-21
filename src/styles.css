@@ -153,6 +153,26 @@ code{color:#ddceff}
 .friends-empty{margin:12px 0 0}
 .party-timer{font-variant-numeric:tabular-nums;color:#d9caff}
 .party-timer strong{margin-left:8px;font-size:20px}
+.screen-share{display:flex;align-items:center;gap:8px;margin:0 0 12px;color:#ded5ee;font-size:13px}
+.screen-share input{accent-color:#b6a2ff}
+.shared-time{display:block;color:#c5bdd7;text-align:right;margin-top:4px}
+.dashboard-activity{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:14px;margin:0}
+.dashboard-activity dt{color:#c5bdd7;font-size:13px}
+.dashboard-activity dd{margin:3px 0 0;font-weight:700;font-size:21px}
+.calendar-heading,.calendar-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.calendar-heading{justify-content:space-between;margin-bottom:15px}
+.calendar-heading h2{margin:0}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.calendar-weekday{font-size:12px;color:#c5bdd7;padding:5px 0}
+.calendar-grid button{display:grid;justify-items:center;align-content:start;gap:3px;min-height:41px;min-width:0;padding:4px 1px;border-radius:7px;border:1px solid #ffffff24;background:#211a35;color:#f5f1ff}
+.calendar-grid button[aria-current=date]{border-color:#ab91ff}
+.calendar-grid button[aria-pressed=true]{background:#b6a2ff;color:#211a36}
+.calendar-grid button small{font-size:10px;font-weight:700}
+.calendar-agenda{margin-top:20px;overflow-wrap:anywhere}
+.calendar-agenda time{flex:none;color:#c5bdd7}
+.pet-voice{margin-top:12px}
+.pet-voice p{margin:5px 0 0;font-size:13px}
+.pet-voice [role=status]:empty{display:none}
 .xp-track{height:9px;border-radius:10px;background:#0f0e1a;overflow:hidden}
 .xp-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#a58cff,#e0a5ff);transition:width .3s ease}
 .pet-xp .xp-line{margin:10px 0 0;text-align:left;line-height:1.5}
