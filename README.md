@@ -1,18 +1,18 @@
 # PC Pet · Gen City First Year Hack
 
-PC Pet is a student planner with a virtual companion. Build a checklist, earn XP for finishing tasks and building app or website streaks, and join focus sessions with friends. Your pet grows as you build those habits.
+PC Pet is a student planner with a virtual companion that makes study habits feel rewarding. Organise work with tasks, reminders, and a calendar; earn XP for completing tasks, playing, and spending focused time in selected apps or websites; and grow a customisable pet as you build routines. Friends can share focus sessions and messages, while optional desktop companions bring the pet outside the planner.
 
 ## What you can do
 
 | Feature | How it works |
 | --- | --- |
 | **Tasks and Calendar** | Add a name, optional description, and reminder date and time to each task. Browse scheduled tasks in the monthly calendar. Your pet pops up inside the open planner when a task is due. |
-| **Dashboard** | See your pet level, tasks done, next unfinished task, best current streak, screen time today and all time, and completed reminders. A completed reminder is a scheduled task marked done. |
-| **Pet room** | Start with Wobbles the camel, switch to the cat or dog, or upload two images for your own animated pet. Name your pet and chat with it. First-time task completions earn 20 XP. Each 100 XP adds a level. |
-| **Windows activity** | The planner discovers foreground apps automatically and ranks them by time used today. **Open tabs** shows the labels Windows exposes, grouped by window. Tracking starts when the local Windows planner opens. |
-| **Website streaks** | On Windows, enable the Chrome or Edge extension for the local planner. Enable **Earn XP** for an app or website to get 10 XP after 10 minutes in a day, plus 5 XP per qualifying day from streak day three. Site and app awards contribute to one pet level. Website time is included in browser time when calculating the total. |
+| **Dashboard** | See your pet level, task progress, upcoming tasks, current app or site streak, screen time, and completed dated tasks. |
+| **Pet room** | Start with Wobbles the camel, switch to the cat or dog, or upload two images for an animated pet. Name and chat with your pet, and use voice commands where browser speech recognition is available. First-time task completions earn 20 XP; play earns 5 XP and uses energy. Every 100 XP adds a level. |
+| **Windows activity** | The local planner automatically samples foreground apps. The Activity view ranks apps by today's and recent usage; **Open tabs** shows available window and tab labels. Activity records and reward preferences stay in browser storage. |
+| **App and website streaks** | Enable **Earn XP** per app or website. Ten active minutes in a day earns 10 XP, with a 5 XP consecutive-day bonus starting on the third qualifying day. App and site rewards contribute to the same pet level. Website tracking requires enabling the Chrome or Edge extension for the local planner; website time is included in browser time without double counting. |
 | **Focus parties** | Create a party or join by code, then start a shared 25-minute countdown when everyone is ready and at least two people have joined. |
-| **Pet chat** | The local Pet room and Flask `/pet` page use Cortex when configured and fall back to scripted replies. |
+| **Pet chat** | The Flask `/pet` page uses Snowflake Cortex when configured and falls back to scripted replies. The planner Pet room also offers scripted chat and voice commands. |
 | **Desktop companion** | See your pet walk across the desktop and show its replies in a speech bubble. The macOS helper also supports messages from friends. |
 
 ## Run the demo
@@ -24,6 +24,8 @@ To let other devices on your local network join parties, run `npm run demo -- --
 In **Messages**, get your friend code and add a friend using theirs. Both people need to use the same Flask server. Sending with the walking pet requires the Windows overlay and a planner opened on the same computer as that server. The recipient sees the message in their browser and, if it is connected to their local planner, in their desktop speech bubble.
 
 The desktop pet roams horizontally and diagonally. It occasionally offers encouragement, and the planner can suggest a break after an hour in a tracked app or point out an app you have not used for seven days. These suggestions use activity saved in your browser.
+
+The planner also includes a Profile area for local profile settings, data controls, and sharing preferences. Friends can opt in to share a daily screen-time total; task names, individual app/site history, and pet progression remain private to the browser.
 
 ## Run locally
 
@@ -58,9 +60,9 @@ Copy [`.env.example`](.env.example) to `.env` for the demo launcher. Set `SNOWFL
 
 ## Where data lives
 
-Tasks, pet progression, app and website usage, and reward history are stored in the local browser. Flask uses SQLite for profiles, friendships, messages, focus parties, and opted-in daily screen-time totals. Friends see the shared date and total duration. Individual apps, websites, and tasks stay private.
+Tasks, pet progression, app and website usage, and reward history are stored in the local browser. Flask uses SQLite for companion profiles, friendships, messages, focus parties, and opted-in daily screen-time totals. Friends see the shared date and total duration. Individual apps, websites, and tasks stay private. The Windows collector samples the foreground desktop locally; Flask does not persist the raw activity sessions.
 
-The React and TypeScript planner lives in `src/features/`, Flask and Jinja in `app/`, and the APIs and Windows collectors in `backend/`. The [FI collaboration notes](collaboration_notes/FI.md) document team handoffs and integration details.
+The React and TypeScript planner lives in `src/features/`, Flask and Jinja in `app/`, API routes and Windows collectors in `backend/`, and the native macOS companion in `desktop/PetOverlay/`. The Chrome/Edge extension is in `browser_activity/`. The [FI collaboration notes](collaboration_notes/FI.md) document team handoffs and implementation details.
 
 ## Tests and demos
 
