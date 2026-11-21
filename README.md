@@ -54,6 +54,10 @@ The React and TypeScript planner lives in `src/features/`, Flask and Jinja in `a
 
 ## Tests and demos
 
+The public [GitHub Pages demo](https://hass-nation.github.io/GenCityFirstYearHack/) runs the browser-only planner. Friends, desktop sync, Windows activity capture, and Cortex chat need Flask.
+
+While Pages publishes directly from the root of `main`, run `npm run build:pages` and commit the generated `index.html`, `assets/`, and `pets/` when changing the frontend. The Vite HTML source is `web/index.html`.
+
 ```sh
 python -m unittest discover -s tests -p "test_*.py"
 node --test

@@ -7,6 +7,7 @@
     "dev": "vite",
     "demo:planner": "node src/features/tasks/main.ts",
     "build": "tsc --noEmit && vite build",
+    "build:pages": "tsc --noEmit && vite build && node scripts/sync-pages.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
