@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Verify your email' if mode == 'verification' else 'Reset your password' }} - PC Pet{% endblock %}
+{% block content %}
+<section class="card auth-card narrow-card">
+  <p class="eyebrow">ACCOUNT HELP</p>
+  <h1>{{ 'Resend verification' if mode == 'verification' else 'Reset password' }}</h1>
+  <p class="muted">{% if mode == 'verification' %}Enter your email and we will send a verification link if the account needs one.{% else %}Enter your account email. If it matches an account, we will send a reset link.{% endif %}</p>
+  <form method="post" class="form-stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Email address<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+    <button class="primary-button" type="submit">{{ 'Send verification link' if mode == 'verification' else 'Send reset link' }}</button>
+  </form>
+  <p class="switch-auth"><a href="{{ url_for('login') }}">Back to sign in</a></p>
+</section>
+{% endblock %}

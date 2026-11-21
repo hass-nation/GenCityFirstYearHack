@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Create account' if mode == 'signup' else 'Sign in' }} · PC Pet{% endblock %}
+{% block title %}{{ 'Create account' if mode == 'signup' else 'Sign in' }} - PC Pet{% endblock %}
 {% block content %}
 <section class="auth-layout">
   <div class="welcome-panel">
-    <div class="pet-orb" aria-hidden="true">🐣</div>
+    <div class="pet-orb" aria-hidden="true">*</div>
     <p class="eyebrow">A softer way to stay on track</p>
     <h1>Your study buddy<br>is waiting.</h1>
     <p class="muted">Make a little progress. Help your pet grow. Pick up where you left off.</p>
@@ -18,9 +18,12 @@
       {% endif %}
       <label>Email address<input name="email" type="email" autocomplete="email" maxlength="254" required value="{{ request.form.get('email', '') }}"></label>
       <label>Password<input name="password" type="password" autocomplete="{{ 'new-password' if mode == 'signup' else 'current-password' }}" minlength="8" required></label>
-      {% if mode == 'signup' %}<p class="hint">Use at least 8 characters.</p>{% endif %}
-      <button class="primary-button" type="submit">{{ 'Create account' if mode == 'signup' else 'Sign in' }} <span aria-hidden="true">→</span></button>
+      {% if mode == 'signup' %}<p class="hint">Use at least 8 characters. You will need to verify your email before signing in.</p>{% endif %}
+      <button class="primary-button" type="submit">{{ 'Create account' if mode == 'signup' else 'Sign in' }}</button>
     </form>
+    {% if mode == 'login' %}
+    <div class="auth-links"><a href="{{ url_for('request_password_reset') }}">Forgot your password?</a><a href="{{ url_for('resend_verification') }}">Resend email verification</a></div>
+    {% endif %}
     <p class="switch-auth">{{ 'Already have an account?' if mode == 'signup' else 'New to PC Pet?' }} <a href="{{ url_for('login' if mode == 'signup' else 'signup') }}">{{ 'Sign in' if mode == 'signup' else 'Create an account' }}</a></p>
   </div>
 </section>

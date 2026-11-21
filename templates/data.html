@@ -1,21 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Your data - PC Pet{% endblock %}
 {% block content %}
-<div class="page-heading"><p class="eyebrow">YOUR INFORMATION</p><h1>Data management</h1><p class="muted">Review the account details currently saved for you.</p></div>
+<div class="page-heading"><p class="eyebrow">YOUR INFORMATION</p><h1>Data management</h1><p class="muted">Review the account, task, and pet fields currently saved for you.</p></div>
 <section class="card data-card">
-  <p class="eyebrow">ACCOUNT DATA</p><h2>Stored fields</h2>
+  <p class="eyebrow">ACCOUNT</p><h2>Account fields</h2>
   <dl class="data-list">
-    <div><dt>Account ID</dt><dd>{{ account_data['account_id'] }}</dd></div>
-    <div><dt>Email</dt><dd>{{ account_data['email'] }}</dd></div>
-    <div><dt>Display name</dt><dd>{{ account_data['display_name'] }}</dd></div>
-    <div><dt>Account created</dt><dd>{{ account_data['created_at'] }}</dd></div>
-    <div><dt>Settings account ID</dt><dd>{{ account_data['settings_user_id'] }}</dd></div>
-    <div><dt>Daily reminders preference</dt><dd>{{ 'Enabled' if account_data['daily_reminders'] else 'Disabled' }}</dd></div>
+    <div><dt>Account ID</dt><dd>{{ account_record['id'] }}</dd></div>
+    <div><dt>Email</dt><dd>{{ account_record['email'] }}</dd></div>
+    <div><dt>Email verified</dt><dd>{{ 'Yes' if account_record['email_verified'] else 'No' }}</dd></div>
+    <div><dt>Display name</dt><dd>{{ account_record['display_name'] }}</dd></div>
+    <div><dt>Account created</dt><dd>{{ account_record['created_at'] }}</dd></div>
+    <div><dt>Settings account ID</dt><dd>{{ settings_record['user_id'] }}</dd></div>
+    <div><dt>Daily reminders preference</dt><dd>{{ 'Enabled' if settings_record['daily_reminders'] else 'Disabled' }}</dd></div>
   </dl>
-  <p class="hint">Password credentials are never displayed or included in your download.</p>
+  <p class="hint">Password credentials and authentication tokens are never displayed or included in your download.</p>
+</section>
+<section class="card data-card data-section">
+  <p class="eyebrow">TASKS</p><h2>Saved tasks</h2>
+  {% if tasks %}<dl class="data-list">{% for task in tasks %}
+  <div><dt>Task {{ task['id'] }}</dt><dd>Owner ID: {{ task['user_id'] }} · Title: {{ task['title'] }} · Status: {{ 'Done' if task['done'] else 'Open' }} · Due: {{ task['due_at'] or 'Not set' }} · Completed: {{ task['completed_at'] or 'Not completed' }} · Created: {{ task['created_at'] }}</dd></div>
+  {% endfor %}</dl>{% else %}<p class="muted">No tasks are saved to your account.</p>{% endif %}
+</section>
+<section class="card data-card data-section">
+  <p class="eyebrow">PET</p><h2>Saved companion</h2>
+  {% if pet %}<dl class="data-list">
+    <div><dt>Name</dt><dd>{{ pet['name'] }}</dd></div><div><dt>Pet user ID</dt><dd>{{ pet['user_id'] }}</dd></div>
+    <div><dt>Hunger</dt><dd>{{ pet['hunger'] }}</dd></div><div><dt>Happiness</dt><dd>{{ pet['happiness'] }}</dd></div>
+    <div><dt>Energy</dt><dd>{{ pet['energy'] }}</dd></div><div><dt>XP</dt><dd>{{ pet['xp'] }}</dd></div><div><dt>Level</dt><dd>{{ pet['level'] }}</dd></div>
+    <div><dt>Avatar</dt><dd>{{ pet['avatar'] or 'Default' }}</dd></div><div><dt>Room theme</dt><dd>{{ pet['room_theme'] or 'Default' }}</dd></div>
+    <div><dt>Last updated</dt><dd>{{ pet['updated_at'] }}</dd></div>
+  </dl>{% else %}<p class="muted">No pet data is saved to your account yet.</p>{% endif %}
 </section>
 <section class="card privacy-card data-actions">
-  <div><p class="eyebrow">YOUR CONTROLS</p><h2>Take your data with you</h2><p class="muted">The export contains the account fields shown here, excluding password credentials.</p></div>
+  <div><p class="eyebrow">YOUR CONTROLS</p><h2>Take your data with you</h2><p class="muted">Your download includes account, settings, task, and pet data, but excludes password credentials and temporary security tokens.</p></div>
   <div class="privacy-actions"><a class="secondary-button" href="{{ url_for('export_data') }}">Download JSON</a><a class="danger-link" href="{{ url_for('delete_account') }}">Delete account</a></div>
 </section>
 {% endblock %}

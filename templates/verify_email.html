@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Verify email - PC Pet{% endblock %}
+{% block content %}
+<section class="card auth-card narrow-card">
+  <p class="eyebrow">ACCOUNT SECURITY</p><h1>Verify your email</h1>
+  <p class="muted">Confirm that you can access this email address. The link expires after 24 hours.</p>
+  <form method="post" class="form-stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="primary-button" type="submit">Verify email</button>
+  </form>
+</section>
+{% endblock %}

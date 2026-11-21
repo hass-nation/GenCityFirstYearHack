@@ -2,6 +2,7 @@
 {% block title %}Your account - PC Pet{% endblock %}
 {% block content %}
 <div class="page-heading"><p class="eyebrow">YOUR SPACE</p><h1>Account</h1><p class="muted">Update your profile details and password.</p></div>
+{% if not user['email_verified'] %}<p class="verification-notice">Your email is not verified yet. <a href="{{ url_for('resend_verification') }}">Request a verification link</a>.</p>{% endif %}
 <section class="account-grid account-forms">
   <div class="card settings-card">
     <p class="eyebrow">PROFILE</p><h2>Your details</h2>

@@ -9,35 +9,38 @@
 
 | Area | Status | Details |
 |---|---|---|
-| Accounts | Implemented and checked | Signed-in users can edit their display name and email, and change their password after confirming the current password. |
-| Settings | Implemented and checked | The daily-reminders preference is saved. The page clearly says reminders are not sent yet. |
-| Data management | Implemented and checked | `/data` displays the saved account and settings fields except password credentials. |
-| Logins and sign-ups | Implemented and tested | Sign-up, sign-in, sign-out, password hashing, duplicate-email handling, sessions, and CSRF protection are covered. |
-| Privacy page | Implemented and checked | Public `/privacy` explains collected data, purpose, storage, retention, and user controls. It is linked from the footer. |
-| Data export/deletion | Implemented and tested | `/account/export` downloads account data without a password hash. `/account/delete` requires the exact text `DELETE`. |
+| Accounts and settings | Implemented and tested | Profile name/email editing, current-password-confirmed password changes, and the daily-reminders preference. The UI says reminders are not sent yet. |
+| Sign-up and sign-in | Implemented and tested | Password hashes, session sign-in/out, CSRF protection, email verification, login throttling, and generic reset/resend responses. |
+| Password recovery | Implemented and tested | Single-use reset links expire after one hour. Verification links expire after 24 hours. Repeated verification/reset email requests are limited. |
+| Privacy and data management | Implemented and tested | Public privacy page; `/data` lists account, settings, task, and pet fields without password hashes or token secrets. |
+| Export and deletion | Implemented and tested | JSON export contains account/settings/task/pet rows. Exact `DELETE` confirmation deletes the account; linked records cascade through SQLite foreign keys. |
 
 ## Verification
 
-- `python -m unittest discover -s tests`: 10 tests passed.
-- Started the Flask app with `python app.py` and checked `/account`, `/settings`, `/data`, `/privacy`, export, and deletion over `http://127.0.0.1:5000`.
-- The temporary account created for the HTTP checks was deleted.
+- `python -m unittest discover -s tests`: 13 tests passed.
+- The tests cover verification and reset flows, login limits, CSRF, settings, profile/password changes, data export, and deletion cascades.
+- Started `python app.py` and checked public pages, signed-out redirects, and signed-in `/account`, `/settings`, `/data`, `/privacy`, export, and delete pages at `http://127.0.0.1:5000`. The temporary HTTP-check account was removed.
+- Outbound SMTP delivery has not been exercised because no SMTP credentials/provider are configured. Development mode logs verification/reset links to the server console.
 
-## Main files
+## Data model for integration
 
-- `app.py` - Flask account routes, sessions, CSRF checks, profile updates, password changes, data export, and deletion.
-- `account_store.py` - SQLite account and settings schema.
-- `templates/` - Account, settings, data, privacy, authentication, and deletion pages.
-- `static/style.css` - Dark and green styles, including mobile navigation and layouts.
-- `tests/test_accounts.py` - Standard-library `unittest` coverage for account flows.
+- `users`: `id`, `email`, `display_name`, `password_hash`, `created_at`, `email_verified`.
+- `user_settings`: `user_id`, `daily_reminders`.
+- `tasks`: `id`, `user_id`, `title`, `done`, `due_at`, `completed_at`, `created_at`.
+- `pets`: `user_id`, `name`, `hunger`, `happiness`, `energy`, `xp`, `level`, `avatar`, `room_theme`, `updated_at`.
+- `tasks.user_id` and `pets.user_id` reference `users.id` with `ON DELETE CASCADE`. Pet/task endpoints and UI still need to be connected to this account schema by the feature owners.
 
 ## Not done yet
 
-- Reminder sending; only the user's preference is saved.
-- Password reset.
-- Login rate limiting.
-- Per-user pet and task data. Until those features are connected to user accounts, export and deletion cover account data only.
-- Email verification.
+- Sending daily reminders; only the preference is saved.
+- Connecting the task and pet UI/API to the account-owned tables. Until that integration is done, other app features may not save their progress in these tables.
+- Configure and verify real SMTP delivery for a deployed environment. Production also needs `FLASK_SECRET_KEY` and HTTPS `PUBLIC_BASE_URL` configured.
+- At-rest encryption for the SQLite database and an automatic retention/deletion schedule are not configured.
 
-## Integration note
+## Main files
 
-This account feature uses Flask, Jinja, vanilla CSS, and SQLite. The pet and task parts of the repository still need to be integrated with the Flask app and account IDs before their data can be included in account export and deletion.
+- `app.py` - Flask account routes, CSRF, sessions, verification/reset, throttling, export, and deletion.
+- `account_store.py` - SQLite schema and account-linked settings/task/pet tables.
+- `account_mail.py` - console development mail and configurable SMTP delivery.
+- `templates/` and `static/style.css` - account, settings, data, privacy, and authentication UI.
+- `tests/test_accounts.py` - stdlib `unittest` coverage.

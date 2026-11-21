@@ -4,19 +4,20 @@
 <div class="page-heading"><p class="eyebrow">PLAIN ENGLISH</p><h1>Privacy</h1><p class="muted">What PC Pet saves and the choices you have.</p></div>
 <section class="card privacy-copy">
   <h2>What we collect</h2>
-  <p>For an account, PC Pet stores your email address, display name, account creation time, a one-way password hash, and your daily-reminders preference. Signing in also uses a session cookie in your browser.</p>
+  <p>Your account stores your email, display name, account creation time, email-verification status, a one-way password hash, and your daily-reminders preference. If saved, your tasks and pet progress are linked to your account. The app also uses a browser session cookie. Failed sign-in attempts are recorded temporarily as a keyed hash of the email and network address, not as plain values.</p>
 
   <h2>Why we use it</h2>
-  <p>Your email and password hash let you sign in. Your display name appears in your account. The creation time records when the account was made. The reminders setting saves your choice, but reminders are not sent yet.</p>
+  <p>Email and password credentials support sign-in and account recovery. Your display name appears in the app. The reminders setting saves your choice, but reminders are not sent yet. Task and pet data is used to keep your progress with your account.</p>
 
   <h2>Where it is stored</h2>
-  <p>Account records are stored in the app's SQLite database, in its private instance folder. For the local app, that is on the machine running Flask. The session cookie is stored by your browser. The app does not display or export your password hash. The page also requests fonts from Google Fonts, which receives a browser request when those fonts load.</p>
+  <p>Account, task, and pet records are stored in the app's SQLite database in its instance folder on the machine running Flask. This database is not encrypted by the app, so access depends on the server's filesystem protections. Session cookies are stored by your browser. Development verification and reset links are written to the server log; production should use configured SMTP delivery.</p>
+  <p>The page also requests fonts from Google Fonts, which receives a browser request when those fonts load.</p>
 
   <h2>How long it is kept</h2>
-  <p>Your account information stays in the database until you delete your account or the database is removed by the person operating the app. There is no automatic deletion schedule yet.</p>
+  <p>Account and linked task/pet data stays in the database until you delete your account or the operator removes the database. There is no automatic account-data deletion schedule. Verification and reset tokens stop working at expiry and their records are cleaned up on the next app request. Failed-login records are used for a 15-minute limit and removed after 24 hours. Verification and reset email request records are removed after 24 hours.</p>
 
   <h2>Your controls</h2>
-  <p>You can edit your name and email, change your password, update your reminder preference, download the account data currently stored, or delete your account.</p>
+  <p>You can edit your name and email, verify your email, change or reset your password, update your reminder preference, download account/task/pet data, or delete your account and linked records.</p>
   {% if g.user %}<a class="secondary-button" href="{{ url_for('data') }}">Manage my data</a>{% else %}<a class="secondary-button" href="{{ url_for('signup') }}">Create an account</a>{% endif %}
 </section>
 {% endblock %}
