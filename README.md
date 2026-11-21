@@ -30,6 +30,12 @@ A student planner with a customisable virtual dog that floats above your Mac app
 
 The static planner deploys to `https://hass-nation.github.io/GenCityFirstYearHack/` whenever a commit is pushed to `main`. The GitHub Pages deployment workflow builds the Vite app and publishes `dist`. In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**. Pages hosts only the frontend; Flask-backed profile and friend messaging features still require a separately hosted API.
 
+### Public API and cross-device friends
+
+The free PythonAnywhere tier can host the Flask API with its SQLite database in persistent account storage. It has limited capacity (one web app, 512 MiB storage and 100 CPU seconds), and web apps expire after one month unless renewed. Follow the deployment notes in `deploy/pythonanywhere_wsgi.py` to configure the WSGI entry point, repository path, SQLite path and CORS origin. Use PythonAnywhere's assigned HTTPS hostname as the API URL.
+
+After the API is live, add a GitHub repository variable named `VITE_API_BASE_URL` with that HTTPS hostname under **Settings → Secrets and variables → Actions → Variables**. Rerun the Pages workflow to rebuild the static app against the API. The API profile, friend links and messages are stored in SQLite under the persistent account directory.
+
 From the project root, build the dashboard and install the Flask requirements:
 
 ```sh
