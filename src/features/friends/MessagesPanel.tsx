@@ -5,6 +5,7 @@ import { identityKey, messagingRequest, type FriendMessage } from "./messages";
 type Profile = { display_name: string; friend_code: string };
 
 export default function MessagesPanel({ inbox }: { inbox: FriendMessage[] }) {
+  const desktopDelivery = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
   const [token, setToken] = useState(() => localStorage.getItem(identityKey) ?? "");
   const [profile, setProfile] = useState<Profile>();
   const [friends, setFriends] = useState<Profile[]>([]);
@@ -52,6 +53,12 @@ export default function MessagesPanel({ inbox }: { inbox: FriendMessage[] }) {
     const form = event.currentTarget;
     const data = new FormData(form);
     void perform(async () => {
+      if (!desktopDelivery) {
+        await messagingRequest("/api/messages", token, { friend_code: data.get("friend"), body: data.get("message") });
+        form.reset();
+        setNotice("Message delivered.");
+        return;
+      }
       const { id } = await messagingRequest<{ id: string }>("/api/desktop-pet/delivery", token, {
         friend_code: data.get("friend"), body: data.get("message"),
       });
@@ -74,7 +81,7 @@ export default function MessagesPanel({ inbox }: { inbox: FriendMessage[] }) {
 
   return <section className="content-card">
     <h2>Friend messages</h2>
-    <p className="muted">Use the same demo server as your friend. On Windows, your desktop pet walks offscreen to deliver your message.</p>
+    <p className="muted">{desktopDelivery ? "Use the same demo server as your friend. On Windows, your desktop pet walks offscreen to deliver your message." : "Add a friend by code to send a message to their inbox."}</p>
     {!token && <button className="primary-button" disabled={busy} onClick={() => void perform(async () => {
       const identity = await messagingRequest<{ token: string }>("/api/users", undefined, { display_name: localStorage.getItem(localProfileKey) || "Guest" });
       localStorage.setItem(identityKey, identity.token);
@@ -89,7 +96,7 @@ export default function MessagesPanel({ inbox }: { inbox: FriendMessage[] }) {
       {friends.length > 0 && <form className="add-task-form friends-section" onSubmit={send}>
         <label>To <select name="friend" required>{friends.map((friend) => <option key={friend.friend_code} value={friend.friend_code}>{friend.display_name}</option>)}</select></label>
         <label>Message<textarea name="message" maxLength={500} required /></label>
-        <button className="primary-button" disabled={busy}>Send with pet</button>
+        <button className="primary-button" disabled={busy}>{desktopDelivery ? "Send with pet" : "Send message"}</button>
       </form>}
     </>}
     {notice && <p role="status">{notice}</p>}

@@ -1,0 +1,15 @@
+**
+!requirements.txt
+!app/
+!app/**
+!backend/
+!backend/**
+!public/
+!public/**
+!dist/
+!dist/**
+!deploy/
+!deploy/snowflake/
+!deploy/snowflake/Dockerfile
+!deploy/snowflake/app_entry.py
+**/__pycache__/

@@ -1,0 +1,40 @@
+spec:
+  containers:
+    - name: planner
+      image: /pc_pet_demo/public/pc_pet_images/pc-pet:demo2
+      command:
+        - /bin/sh
+        - -c
+        - >-
+          export SNOWFLAKE_ACCOUNT_URL="https://${SNOWFLAKE_HOST}";
+          exec /usr/local/bin/python -m gunicorn --chdir /opt/pc-pet
+          --bind 0.0.0.0:8080 --workers 1 --threads 4 --timeout 40 app_entry:app
+      env:
+        PYTHONPATH: /opt/pc-pet/vendor
+        PC_PET_INSTANCE_PATH: /data
+        SNOWFLAKE_TOKEN_FILE: /snowflake/session/token
+        SNOWFLAKE_AUTH_TOKEN_TYPE: OAUTH
+        PET_AGENT_DB: USER$FARUKICEN
+        PET_AGENT_SCHEMA: PUBLIC
+        PET_AGENT_NAME: PC_PET_AGENT
+      volumeMounts:
+        - name: demo-data
+          mountPath: /data
+      readinessProbe:
+        port: 8080
+        path: /api/health
+      resources:
+        requests:
+          cpu: 0.25
+          memory: 256Mi
+        limits:
+          cpu: 1
+          memory: 512Mi
+  endpoints:
+    - name: planner
+      port: 8080
+      public: true
+  volumes:
+    - name: demo-data
+      source: block
+      size: 5Gi

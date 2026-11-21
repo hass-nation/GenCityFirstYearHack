@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 import requests
@@ -19,6 +20,12 @@ logger = logging.getLogger(__name__)
 def _agent_config():
     account = os.environ.get("SNOWFLAKE_ACCOUNT_URL", "").strip().rstrip("/")
     token = os.environ.get("SNOWFLAKE_TOKEN", "").strip()
+    token_file = os.environ.get("SNOWFLAKE_TOKEN_FILE")
+    if token_file and not token:
+        try:
+            token = Path(token_file).read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
     database = os.environ.get("PET_AGENT_DB", "").strip()
     schema = os.environ.get("PET_AGENT_SCHEMA", "").strip()
     name = os.environ.get("PET_AGENT_NAME", "").strip() or "PC_PET_AGENT"
@@ -90,11 +97,15 @@ def ask_pet(user_text, pet, next_task, streak, history):
         config = _agent_config()
         if config:
             url, token = config
-            response = requests.post(url, headers={
+            token_type = os.environ.get("SNOWFLAKE_AUTH_TOKEN_TYPE")
+            headers = {
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-            }, json={"stream": False, "messages": messages}, timeout=(4, 22), allow_redirects=False)
+            }
+            if token_type:
+                headers["X-Snowflake-Authorization-Token-Type"] = token_type
+            response = requests.post(url, headers=headers, json={"stream": False, "messages": messages}, timeout=(4, 22), allow_redirects=False)
             response.raise_for_status()
             reply = _assistant_text(response.json())
             if reply:

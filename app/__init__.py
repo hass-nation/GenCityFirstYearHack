@@ -15,7 +15,8 @@ from .chat import pet_chat
 
 def create_app(frontend_dir: Path | None = None) -> Flask:
     root = Path(__file__).resolve().parent.parent
-    app = Flask(__name__, instance_path=str(root / "instance"))
+    instance = Path(os.environ.get("PC_PET_INSTANCE_PATH", root / "instance")).resolve()
+    app = Flask(__name__, instance_path=str(instance))
     app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
     app.register_blueprint(api)
     app.register_blueprint(activity_api)

@@ -22,7 +22,7 @@ class FriendsError extends Error {
 
 async function callApi<T>(path: string, token?: string, method = "GET", body?: object, signal?: AbortSignal): Promise<T> {
   const headers = new Headers();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (token) headers.set("X-PC-Pet-Token", token);
   if (body) headers.set("Content-Type", "application/json");
   const timeout = AbortSignal.timeout(8000);
   const response = await fetch(`/api${path}`, {

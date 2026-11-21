@@ -38,6 +38,14 @@ class DesktopPetTest(unittest.TestCase):
         self.assertEqual(self.client.put(self.url, json=appearance, headers=self.origin).status_code, 400)
         self.assertEqual(self.client.get(self.url).json["appearance"]["species"], "camel")
 
+    def test_profile_token_can_coexist_with_ingress_authorization(self):
+        created = self.client.post("/api/users", json={"display_name": "Tester"}).json
+        response = self.client.get("/api/me", headers={
+            "Authorization": "Bearer ingress-token",
+            "X-PC-Pet-Token": created["token"],
+        })
+        self.assertEqual(response.json["profile"]["display_name"], "Tester")
+
     def test_friend_message_arrives_only_after_desktop_acknowledges_exit(self):
         def profile(name):
             created = self.client.post("/api/users", json={"display_name": name}).json

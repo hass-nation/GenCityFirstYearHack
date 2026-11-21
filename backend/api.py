@@ -85,9 +85,11 @@ def token_digest(token: str) -> str:
 
 
 def current_user() -> sqlite3.Row | None:
-    scheme, _, token = request.headers.get("Authorization", "").partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        return None
+    token = request.headers.get("X-PC-Pet-Token", "")
+    if not token:
+        scheme, _, token = request.headers.get("Authorization", "").partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            return None
     return database().execute(
         "SELECT * FROM users WHERE token_hash = ?", (token_digest(token),)
     ).fetchone()
