@@ -101,4 +101,24 @@ Each module also exports a `sample…` function. `sampleTasks()` takes no argume
 | File | Inputs | Outputs and behavior |
 | --- | --- | --- |
 | [src/App.tsx](../src/App.tsx) | Starter data or saved browser data, navigation clicks, task titles and IDs, and pet interactions | Renders the selected page, saves task and pet state to browser `localStorage`, and awards pet XP when a task is marked complete. The current Home screen shows the first unfinished task. It uses its own state handlers. |
-| [backend/api.py](../backend/api.py) | `GET /api/health` with no body | HTTP 200 with JSON `{"status":"ok"}`. Task state currently lives in the browser. |
+| [backend/api.py](../backend/api.py) | `GET /api/health`; profile creation with `POST /api/users`; bearer-authenticated profile, pet, friend, and message requests | Returns profile tokens and friend codes, stores profiles/friendships/messages in SQLite, and allows pet name/avatar/theme updates. Planner task state still lives in the browser. See the TT handoff below for route details. |
+
+## TT handoff — 4c77013 Add floating dog companion and friend messaging
+
+The Person 3 pet work now includes a macOS AppKit floating companion in [`desktop/PetOverlay/`](../desktop/PetOverlay/). Biscuit stays above other apps and Spaces, has scripted local chat bubbles, and supports pet name, avatar, and room-theme customisation. The browser demo defaults to a dog and migrates the original default chick to a dog for existing local saves. Cosmetic fields on `Pet` remain optional for saved-data compatibility.
+
+The overlay uses these shared Flask routes in [`backend/api.py`](../backend/api.py):
+
+| Route | Request and response |
+| --- | --- |
+| `POST /api/users` | `{ "display_name": "…" }`; returns a one-time bearer token and profile with an 8-character friend code. |
+| `GET /api/me` | Bearer-authenticated current profile. |
+| `PATCH /api/me/pet` | Bearer-authenticated `{ "pet_name": "…", "pet_avatar": "…", "pet_theme": "lavender|meadow|sunset" }`; fields may be sent separately. |
+| `GET /api/friends` | Bearer-authenticated list of connected profiles. |
+| `POST /api/friends` | Bearer-authenticated `{ "friend_code": "ABCDEFGH" }`; connects both profiles. |
+| `POST /api/messages` | Bearer-authenticated `{ "friend_code": "ABCDEFGH", "body": "…" }`; queues a message for that friend. |
+| `GET /api/messages?after=<id>` | Bearer-authenticated inbox polling; returns newer messages with sender and pet details. The overlay polls every four seconds. |
+
+The token hash, profiles, friendships, and message queue are stored in `instance/gencity.sqlite3`. The overlay token is kept in macOS user defaults. For messages between devices, both overlays must use the same hosted Flask server and persistent database; the documented local server binds only to `127.0.0.1` and is reachable on that Mac only. The recipient overlay must be running to show a live bubble.
+
+Verified for this commit: `npm run build`, `swift build` in `desktop/PetOverlay`, `git diff --check`, Python syntax compilation, and a Flask client smoke check covering profile creation, friend pairing, message delivery, and pet customisation. The Swift build emits two linker search-path warnings from the installed Command Line Tools but succeeds.

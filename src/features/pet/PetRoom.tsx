@@ -10,7 +10,7 @@ type Props = {
 
 type ChatMessage = { from: "you" | "pet"; text: string };
 
-const avatars = ["🐣", "🐱", "🐸", "🦊", "🐼"];
+const avatars = ["🐶", "🐱", "🐸", "🦊", "🐼"];
 const themes: { id: NonNullable<Pet["roomTheme"]>; label: string; emoji: string }[] = [
   { id: "lavender", label: "Lavender", emoji: "💜" },
   { id: "meadow", label: "Meadow", emoji: "🌿" },
@@ -46,7 +46,7 @@ export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props)
     { from: "pet", text: `Hi! I'm ${pet.name}. I'm happy you're here. What would you like to do?` },
   ]);
   const levelXp = pet.xp % 100;
-  const moodEmoji = pet.energy === 0 ? "😴" : pet.hunger > 70 ? "🥺" : pet.happiness < 30 ? "😿" : "🐣";
+  const moodEmoji = pet.energy === 0 ? "😴" : pet.hunger > 70 ? "🥺" : pet.happiness < 30 ? "😿" : "🐶";
   const mood = pet.energy === 0 ? "A little sleepy" : pet.hunger > 70 ? "Ready for a snack" : pet.happiness < 30 ? "Could use some playtime" : "Feeling cosy and content";
 
   function sendMessage(event: FormEvent<HTMLFormElement>) {
@@ -94,7 +94,7 @@ export default function PetRoom({ pet, onAction, onRename, onCustomise }: Props)
       <section className="customise-panel" aria-labelledby="customise-title">
         <div className="subsection-heading"><div><p className="eyebrow">MAKE IT YOURS</p><h3 id="customise-title">Customise your room</h3></div></div>
         <div className="customise-group"><span className="customise-label">Your companion</span><div className="choice-row">
-          {avatars.map((avatar) => <button key={avatar} type="button" className={`avatar-choice${(pet.avatar ?? "🐣") === avatar ? " selected" : ""}`} aria-label={`Choose ${avatar} companion`} aria-pressed={(pet.avatar ?? "🐣") === avatar} onClick={() => onCustomise({ avatar })}>{avatar}</button>)}
+          {avatars.map((avatar) => <button key={avatar} type="button" className={`avatar-choice${(pet.avatar ?? "🐶") === avatar ? " selected" : ""}`} aria-label={`Choose ${avatar} companion`} aria-pressed={(pet.avatar ?? "🐶") === avatar} onClick={() => onCustomise({ avatar })}>{avatar}</button>)}
         </div></div>
         <div className="customise-group"><span className="customise-label">Room mood</span><div className="choice-row theme-choices">
           {themes.map((theme) => <button key={theme.id} type="button" className={`theme-choice${(pet.roomTheme ?? "lavender") === theme.id ? " selected" : ""}`} aria-pressed={(pet.roomTheme ?? "lavender") === theme.id} onClick={() => onCustomise({ roomTheme: theme.id })}><span aria-hidden="true">{theme.emoji}</span>{theme.label}</button>)}
