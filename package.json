@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "demo:planner": "node src/features/tasks/main.ts",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
