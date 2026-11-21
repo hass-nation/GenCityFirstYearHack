@@ -10,36 +10,27 @@ A student planner with a customisable virtual pet that chats with you, reminds y
 - **Tasks and reminders:** Add a task, mark it complete, and show what is coming up.
 - **Streaks and XP:** Completing tasks earns XP and helps the pet level up.
 - **Dashboard:** Show the pet, tasks completed, XP, and today's next task.
-- **Personal data:** Save the demo pet and tasks in this browser with localStorage.
+- **Personal data:** Save the demo pet and tasks between sessions.
 
 **Demo flow:** Add a task → complete it → show XP increase → care for the pet → reload to show progress saved.
 
 ## Stack
 
-- Vite
-- React
-- TypeScript
-- CSS
-- localStorage for the browser demo
+- Python 3.12 with Flask 3.1.3
+- Jinja templates for server-rendered HTML
+- Plain CSS and vanilla JavaScript for pet animations and interactions
 
-## Run locally
+## Migration status
 
-```bash
-npm install
-npm run dev
-```
-
-Build and preview with `npm run build` and `npm run preview`.
-
-Node.js is required. Follow the current requirements in the [Vite getting-started guide](https://vite.dev/guide/).
+Flask replaces React and Vite for the hackathon build. The existing starter code on this branch still uses React. Flask run instructions will follow once the Flask app is committed.
 
 ## Feature owners
 
-- **Person 1:** account/profile, settings, privacy, and data management in `src/features/accounts/`
-- **Person 2:** tasks, reminders, calendar, and streaks in `src/features/tasks/`
-- **Person 3:** pet, chat, XP, levels, and customisation in `src/features/pet/`
+- **Person 1:** account/profile, settings, privacy, and data management
+- **Person 2:** tasks, reminders, calendar, and streaks
+- **Person 3:** pet, chat, XP, levels, and customisation
 
-Create a feature branch for your work. Keep changes in your feature folder where possible. Coordinate edits to `src/App.tsx` and `src/types.ts` with the team before changing shared integration points.
+Use `feature/accounts`, `feature/tasks`, and `feature/pet` for the three workstreams. Coordinate shared Flask routes, templates, and data models with the team.
 
 ## Later ideas
 
