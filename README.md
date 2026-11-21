@@ -1,69 +1,64 @@
-# PC Pet · Gen City First Year Hack
+# Gen City First Year Hack · PC Pet
 
-PC Pet is a student planner with a virtual companion. Build a checklist, earn XP for finishing tasks and using apps you choose, and sit down for a shared focus session with friends. Your pet grows as you build those habits.
+**The winning team btw**
 
-## What you can do
+A student planner with a customisable virtual dog that floats above your Mac apps, chats with you, reminds you what is coming up, and levels up as you complete tasks and keep streaks going.
 
-| Feature | How it works |
-| --- | --- |
-| **Plan your day** | Add tasks with a name, optional description, and a reminder date and time. Home shows your checklist progress and next unfinished task. Your pet pops up inside the planner when a reminder is due. |
-| **Care for your pet** | Pick a companion and room theme, rename your pet, and feed, play with, or rest it. First-time task completions earn 20 XP, play earns 5 XP, and every 100 XP is a new level. |
-| **Build app streaks on Windows** | The Activity tab discovers apps from foreground use and ranks them by time today. Turn on **Earn XP** for an app to get 10 XP after 10 minutes in one day, plus 5 XP per qualifying day from streak day three. Each app can earn one reward per day. App XP contributes to the same pet level. |
-| **Focus with friends** | Add friends by code. Create or join a private party with a separate invite code, see who is ready, and start a shared 25-minute countdown. A party needs at least two players, and everyone must be ready. |
-| **Chat with your pet** | The planner's Pet room has scripted chat. Flask also serves a separate `/pet` chat page that can use a Snowflake Cortex Agent and falls back to scripted replies. |
-| **Bring the dog onto your Mac desktop** | The separate macOS companion is a draggable, always-on-top dog. It uses the Flask profile and messaging API to exchange messages with friends' overlays. |
+## Hackathon MVP
 
-On Windows, foreground capture starts automatically when the planner opens and updates about every two seconds. **Activity → Stop tracking** pauses it and remembers your choice. Expand **Open tabs** to see tab titles exposed by Windows, grouped by window. Usage time, streaks, and XP are measured per app. The browser extension also offers a manual tab snapshot export for Chrome and Edge.
+- **Pet:** Name and care for your companion. Add customisation and simple scripted chat in the pet room.
+- **Tasks and reminders:** Add a task, mark it complete, and show what is coming up.
+- **Streaks and XP:** Completing tasks earns XP and helps the pet level up.
+- **Dashboard:** Show the pet, tasks completed, XP, and today's next task.
+- **Personal data:** Save the demo pet and tasks between sessions.
+- **Desktop companion:** Run the native macOS overlay for a draggable, always-on-top dog with chat bubbles.
+- **Friends:** Share a private friend code to pair profiles and deliver messages to a friend's running overlay.
 
-## Run locally
+**Demo flow:** Open Biscuit on the desktop → customise the pet → pair with a friend code → send a message to their screen → complete a task to earn XP.
 
-Use Node.js 24 and Python 3.11 or newer. From the repository root:
+## Stack
+
+- Python 3.12 with Flask 3.1.3 for the API and production asset serving
+- React and TypeScript with Vite for the planner and pet manager
+- CSS for the browser interface
+- AppKit for the macOS floating overlay
+- SQLite for friend profiles and message delivery
+
+## Run the demo on macOS
+
+From the project root, build the dashboard and install the Flask requirements:
 
 ```sh
-python -m pip install -r requirements.txt
 npm install
 npm run build
-python -m flask --app app run
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-Open `http://127.0.0.1:5000` for the planner. For frontend hot reload, run `npm run dev` in a second terminal and open the URL Vite prints. Vite forwards `/api` to Flask on port 5000.
-
-- **Try a reminder.** Add a task in **Tasks**, schedule it for the next minute, then switch to **Home** and leave the planner open.
-- **Try foreground tracking.** Run Flask on the Windows PC you're using, open **Activity**, and switch apps. The first samples appear as the tracker detects foreground use.
-- **Try a party.** Open the same planner URL in a normal and a private window. Create a different profile in each, create a party in one window, and join with its party code in the other. Across devices, everyone needs the same Flask server and persistent SQLite database.
-- **Try the macOS overlay.** Follow the [desktop companion setup](desktop/PetOverlay/README.md). The overlay requires macOS 13 or newer.
-
-## Configure Cortex chat
-
-With Flask running, open `http://127.0.0.1:5000/pet`. Open the planner on that same origin if you want the chat to use its saved pet and next task.
-
-Export the variables in [`.env.example`](.env.example) in your shell or deployment environment before starting Flask. Set `SNOWFLAKE_ACCOUNT_URL` to the HTTPS account origin, `SNOWFLAKE_TOKEN` to the programmatic access token, and `PET_AGENT_DB` and `PET_AGENT_SCHEMA` to the agent's database and schema. `PET_AGENT_NAME` defaults to `PC_PET_AGENT`. Set a stable random `SECRET_KEY` to keep chat sessions across restarts. The token stays on the server.
-
-## Data and project layout
-
-Tasks, pet progress, and Windows per-app totals and rewards live in the current browser. The Flask API stores companion profiles, friendships, messages, and party state in SQLite. The website reminder currently appears inside the planner. The macOS dog can show friend message bubbles.
-
-| Location | Purpose |
-| --- | --- |
-| `src/features/` | React and TypeScript planner, tasks, pet room, activity and Friends screens |
-| `app/` | Flask factory, built website serving, and Jinja pet chat |
-| `backend/` | Profile, messaging and party APIs, plus Windows capture and usage summaries |
-| `desktop/PetOverlay/` | Swift and AppKit companion for macOS |
-| `browser_activity/` | [Chrome and Edge tab snapshot extension](browser_activity/README.md) |
-| `collaboration_notes/` | [FI handoff and implementation notes](collaboration_notes/FI.md) |
-
-## Tests and script demos
+Start Flask in one terminal:
 
 ```sh
-python -m unittest discover -s tests -p "test_*.py"
-node --test
-npm run build
+python -m flask --app app run --host 127.0.0.1 --port 5000
 ```
 
-`npm run demo:planner` prints sample results for the planner modules. On Windows, `python test.py` runs the open-app and tab snapshot, the planner demo, and a ten-second foreground capture with usage statistics and pet triggers.
+Open the dashboard at `http://127.0.0.1:5000`. In another terminal, package and launch the floating dog:
 
-## Team workstreams
+```sh
+sh desktop/PetOverlay/package_app.sh
+open desktop/PetOverlay/.build/GenCityPetOverlay.app
+```
 
-- **HE** owns accounts, settings, privacy, and data management in `feature/accounts`.
-- **FI** owns tasks, reminders, the planner dashboard, and Windows activity in `feature/tasks`.
-- **TT** owns the pet, customisation, chat, and desktop overlay in `feature/pet`. Coordinate shared XP and Friends changes across these workstreams.
+In Biscuit's **Friends** panel, create a profile to get a friend code. For messages to reach friends on other devices, host Flask with a persistent SQLite database and HTTPS; both devices must use the same server URL. The local `127.0.0.1` server only reaches this Mac. See [the overlay guide](desktop/PetOverlay/README.md) for details.
+
+## Feature owners
+
+- **Person 1:** account/profile, settings, privacy, and data management
+- **Person 2:** tasks, reminders, calendar, and streaks
+- **Person 3:** pet, chat, XP, levels, and customisation
+
+Use `feature/accounts`, `feature/tasks`, and `feature/pet` for the three workstreams. Coordinate shared Flask routes, templates, and data models with the team.
+
+## Later ideas
+
+Voice control and automatic app/site streak tracking can come after the desktop and friend messaging demo.
