@@ -29,12 +29,13 @@ export function awardXp(pet: Pet, source: XpReward["source"], amount: number, de
   return { pet: { ...pet, xp, level }, reward };
 }
 
-export function toggleTaskProgress(state: PlannerProgress, id: string): PlannerProgress {
+export function toggleTaskProgress(state: PlannerProgress, id: string, now = new Date()): PlannerProgress {
   const task = state.tasks.find((item) => item.id === id);
   if (!task) return state;
 
   const alreadyAwarded = task.done || task.xpAwarded;
-  const toggled = { ...task, done: !task.done, xpAwarded: true };
+  const completed = !task.done;
+  const toggled = { ...task, done: completed, completedAt: completed ? now.toISOString() : undefined, xpAwarded: true };
   const tasks = state.tasks.map((item) => item.id === id ? toggled : item);
   if (!toggled.done) return { ...state, tasks };
 

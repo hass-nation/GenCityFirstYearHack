@@ -1,4 +1,4 @@
-export type Page = "home" | "tasks" | "calendar" | "activity" | "pet" | "friends" | "account";
+export type Page = "home" | "tasks" | "reminders" | "streaks" | "calendar" | "activity" | "pet" | "friends" | "account";
 
 export type Task = {
   id: string;
@@ -6,6 +6,7 @@ export type Task = {
   done: boolean;
   description?: string;
   dueAt?: string;
+  completedAt?: string;
   reminderDismissed?: boolean;
   xpAwarded?: boolean;
 };
